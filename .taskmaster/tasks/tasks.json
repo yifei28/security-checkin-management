@@ -1,0 +1,228 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Setup and Development Environment Configuration",
+        "description": "Initialize React + TypeScript + Vite project with essential development tools and configuration",
+        "details": "Create new Vite React project with TypeScript template using `npm create vite@latest . -- --template react-ts`. Install core dependencies: @types/react@^18.2.0, @types/react-dom@^18.2.0, typescript@^5.2.0, vite@^5.0.0. Configure tsconfig.json with strict mode and path aliases. Set up ESLint with @typescript-eslint/parser and prettier for code formatting. Create basic folder structure: src/components, src/pages, src/hooks, src/types, src/utils, src/api. Configure Vite for development with HMR and build optimization.",
+        "testStrategy": "Verify project builds without errors using `npm run build`, development server starts correctly with `npm run dev`, TypeScript compilation passes, and ESLint rules are enforced properly.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "UI Framework and Styling Setup",
+        "description": "Integrate shadcn/ui components with Tailwind CSS v4 for modern, accessible admin interface",
+        "details": "Install Tailwind CSS v4 with `npm install tailwindcss@^4.1.8 @tailwindcss/postcss@^4.1.8 tw-animate-css@^1.3.6 tailwindcss-animate@^1.0.7`. Create postcss.config.js with @tailwindcss/postcss plugin. Initialize shadcn/ui with `npx shadcn@latest init` using OKLCH color system. Install essential components: Button, Input, Card, Table, Form, Dialog, Alert, Select, Badge. Configure components.json with empty tailwind config for v4 compatibility. Set up CSS variables for theming in src/index.css with OKLCH format colors.",
+        "testStrategy": "Verify Tailwind classes render correctly, shadcn/ui components display with proper styling, responsive design works across devices, and PostCSS processes Tailwind v4 syntax properly.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Routing and Navigation Structure",
+        "description": "Implement client-side routing with React Router Dom and create admin layout with navigation",
+        "details": "Install react-router-dom@^6.20.0 with TypeScript types. Create route structure: /login (public), /admin/* (protected), /manager (super admin). Implement AdminLayout component using shadcn/ui Sheet or NavigationMenu for sidebar navigation. Create ProtectedRoute wrapper component for authentication guards. Set up route configuration with lazy loading for code splitting. Implement breadcrumb navigation and active route highlighting. Use Outlet for nested route rendering.",
+        "testStrategy": "Test route navigation works correctly, protected routes redirect to login when unauthenticated, breadcrumbs update properly, and lazy loading chunks are created during build.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "TypeScript Interfaces and API Types",
+        "description": "Define comprehensive TypeScript interfaces for all data models and API interactions",
+        "details": "Create src/types/index.ts with interfaces for Guard (id, name, phoneNumber, photoUrl, assignedSiteIds[]), Site (id, name, latitude, longitude, assignedGuardIds[]), CheckInRecord (id, guardId, siteId, timestamp, location, faceImageUrl, status, reason). Define API response types with generic ApiResponse<T> wrapper. Create authentication types for User, LoginRequest, LoginResponse with JWT token. Add form validation types using zod@^3.22.0 for runtime type checking.",
+        "testStrategy": "Verify TypeScript compilation passes with strict mode, all API calls are properly typed, form validation works with zod schemas, and IDE provides proper autocomplete for all types.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Core Data Model Interfaces",
+            "description": "Define TypeScript interfaces for primary entities: Guard, Site, and CheckInRecord with all specified properties",
+            "dependencies": [],
+            "details": "Create src/types/index.ts and define Guard interface (id: string, name: string, phoneNumber: string, photoUrl: string, assignedSiteIds: string[]), Site interface (id: string, name: string, latitude: number, longitude: number, assignedGuardIds: string[]), and CheckInRecord interface (id: string, guardId: string, siteId: string, timestamp: Date, location: {lat: number, lng: number}, faceImageUrl: string, status: 'success' | 'failed' | 'pending', reason?: string). Include proper JSDoc comments for each interface.",
+            "status": "done",
+            "testStrategy": "Verify TypeScript compilation passes with strict mode enabled, all required properties are properly typed, and IDE provides accurate autocomplete for interface properties."
+          },
+          {
+            "id": 2,
+            "title": "Implement Generic API Response Types",
+            "description": "Create standardized API response wrapper types and error handling interfaces",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Define generic ApiResponse<T> interface with data: T, success: boolean, message: string, and errors?: string[] properties. Create ApiError interface for error responses. Define pagination types with PaginatedResponse<T> extending ApiResponse<T> and including totalCount, currentPage, pageSize, and totalPages. Add HTTP status code enums and request/response metadata types.",
+            "status": "done",
+            "testStrategy": "Test that all API response types properly wrap data payloads, error responses maintain consistent structure, and generic types work correctly with different data models."
+          },
+          {
+            "id": 3,
+            "title": "Define Authentication and User Types",
+            "description": "Create comprehensive authentication-related TypeScript interfaces and JWT token types",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Define User interface with id: string, username: string, role: 'admin' | 'superAdmin', createdAt: Date, lastLoginAt?: Date. Create LoginRequest interface with username: string and password: string. Define LoginResponse interface with token: string, user: User, expiresIn: number. Add JWT token payload interface with sub: string, role: string, exp: number, iat: number. Include session management types for localStorage token storage.",
+            "status": "done",
+            "testStrategy": "Verify authentication types support both admin roles, JWT token structure matches backend expectations, login flow types are complete, and session types handle token expiration properly."
+          },
+          {
+            "id": 4,
+            "title": "Set up Zod Validation Schemas",
+            "description": "Install zod and create runtime validation schemas for all data models and forms",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3"
+            ],
+            "details": "Install zod@^3.22.0 package. Create validation schemas in src/types/schemas.ts for GuardSchema, SiteSchema, CheckInRecordSchema, LoginSchema, and UserSchema. Define form validation schemas with proper error messages in Chinese. Create utility functions for schema validation and TypeScript type inference using z.infer<>. Add schema-based form validation helpers for react-hook-form integration.",
+            "status": "done",
+            "testStrategy": "Test that zod schemas validate data correctly, form validation displays proper Chinese error messages, schema inference generates correct TypeScript types, and validation works in both development and production builds."
+          },
+          {
+            "id": 5,
+            "title": "Export Type Definitions and Create Type Utilities",
+            "description": "Organize type exports and create utility types for enhanced developer experience",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4"
+            ],
+            "details": "Create comprehensive type exports from src/types/index.ts including all interfaces, enums, and schemas. Define utility types like Partial<Guard>, Required<Site>, Pick<CheckInRecord>, and custom mapped types for form states. Create type guards and assertion functions for runtime type checking. Add TypeScript declaration merging for third-party library extensions. Include proper module augmentation for better IDE support.",
+            "status": "done",
+            "testStrategy": "Verify all types are properly exported and accessible throughout the application, utility types work correctly in component props, type guards provide accurate runtime checks, and TypeScript strict mode compilation passes without errors."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "HTTP Client and API Integration Layer",
+        "description": "Set up Axios HTTP client with interceptors for authentication and error handling",
+        "details": "Install axios@^1.6.0 and create src/api/client.ts with base configuration pointing to backend API. Implement request interceptor to automatically add Bearer token from localStorage. Create response interceptor for handling 401 errors with automatic logout. Set up API service modules: authApi.ts, guardsApi.ts, sitesApi.ts, checkinsApi.ts. Use React Query @tanstack/react-query@^5.0.0 for caching and state management. Implement error boundaries for API error handling.",
+        "testStrategy": "Test API calls work with proper authentication headers, 401 responses trigger logout, retry logic works for network failures, and React Query caching improves performance.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Authentication System Implementation",
+        "description": "Build JWT-based login system with token management and protected routing",
+        "details": "Create login page using shadcn/ui Card, Input, and Button components with form validation using react-hook-form@^7.48.0 and zod. Implement useAuth hook for authentication state management. Store JWT token and user role in localStorage with automatic expiration handling. Create AuthContext with React Context API for global auth state. Implement logout functionality with token cleanup. Add token refresh logic using axios interceptors.",
+        "testStrategy": "Test successful login stores token correctly, invalid credentials show proper errors, token expiration triggers logout, protected routes work correctly, and authentication state persists across page refreshes.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Guard Management Interface",
+        "description": "Create comprehensive guard management system with CRUD operations and data tables",
+        "details": "Build guards page using shadcn/ui Table components with sorting, filtering, and pagination. Implement Add/Edit guard dialog using shadcn/ui Dialog and Form components. Add photo upload functionality with preview using file input. Create guard assignment to sites with multi-select dropdown. Implement bulk operations for guard management. Use React Query for optimistic updates and cache invalidation. Add search functionality with debounced input.",
+        "testStrategy": "Test CRUD operations work correctly, photo upload handles file validation, site assignments update properly, table sorting/filtering performs well with large datasets, and optimistic updates provide good UX.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Site Management Interface",
+        "description": "Build site management system with map integration and guard assignment capabilities",
+        "details": "Create sites management page with CRUD operations using shadcn/ui components. Integrate map display for site coordinates using leaflet@^1.9.0 and react-leaflet@^4.2.0 with OpenStreetMap tiles. Implement coordinate picker for site location selection. Add guard assignment interface with drag-and-drop or multi-select. Create site validation rules (geofence radius). Display assigned guards count and status for each site.",
+        "testStrategy": "Test site creation with map coordinate selection, guard assignments sync correctly, map displays accurate locations, coordinate validation prevents invalid entries, and bulk site operations work efficiently.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Check-in Records Viewer",
+        "description": "Develop comprehensive check-in record interface with filtering, photo viewing, and map integration",
+        "details": "Build check-in records table using shadcn/ui Table with advanced filtering by date range, guard, site, and status. Implement photo viewer modal using shadcn/ui Dialog for face verification images. Add map integration showing check-in locations with markers. Create export to CSV functionality using papaparse@^5.4.0. Implement infinite scrolling or pagination for large datasets. Add real-time updates using WebSocket or polling.",
+        "testStrategy": "Test filtering works correctly across multiple criteria, photo viewer displays images properly, map shows accurate check-in locations, CSV export contains all required data, and performance remains good with large record sets.",
+        "priority": "high",
+        "dependencies": [
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Dashboard and Analytics",
+        "description": "Create comprehensive dashboard with metrics visualization and operational insights",
+        "details": "Build dashboard using shadcn/ui Card components for metrics display. Implement charts using recharts@^2.8.0 for attendance trends, site performance, and guard statistics. Create real-time metrics for today's check-ins, failed verifications, and missing shifts. Add guard demographics visualization (age, height distribution). Implement date range selector for historical data analysis. Create summary widgets for quick operational overview.",
+        "testStrategy": "Test charts display correct data, real-time metrics update properly, date range filtering works across all widgets, responsive design maintains readability on all devices, and performance is acceptable with large datasets.",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Error Handling and Loading States",
+        "description": "Implement comprehensive error handling, loading states, and user feedback systems",
+        "details": "Create global error boundary using react-error-boundary@^4.0.0 for unhandled exceptions. Implement loading skeletons using shadcn/ui Skeleton component. Add toast notifications using sonner@^1.2.0 for user feedback. Create retry mechanisms for failed API calls. Implement offline detection and graceful degradation. Add form validation errors with proper accessibility attributes.",
+        "testStrategy": "Test error boundaries catch and display errors properly, loading states provide good UX during API calls, toast notifications appear for all user actions, retry logic recovers from temporary failures, and accessibility standards are met.",
+        "priority": "medium",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Production Optimization and Deployment",
+        "description": "Optimize application for production deployment with performance monitoring and security features",
+        "details": "Configure Vite for production builds with code splitting and tree shaking. Implement lazy loading for route components and heavy features. Set up bundle analysis using vite-bundle-analyzer. Configure CSP headers and security best practices. Set up environment variable management for different deployment stages. Implement service worker for caching using vite-plugin-pwa@^0.17.0. Configure deployment for Vercel/Netlify with proper redirects.",
+        "testStrategy": "Test production build size is optimized, lazy loading works correctly, CSP doesn't block required resources, environment variables are properly configured, service worker caches resources appropriately, and deployment succeeds with proper routing.",
+        "priority": "medium",
+        "dependencies": [
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-06T03:41:19.882Z",
+      "updated": "2025-08-06T04:14:52.499Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

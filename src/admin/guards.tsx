@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Guard {
   id: number
@@ -18,10 +25,11 @@ interface Site {
 export default function GuardManagement() {
   const [guards, setGuards] = useState<Guard[]>([])
   const [sites, setSites] = useState<Site[]>([])
+  const [error, setError] = useState('')
 
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
-  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null)
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('')
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingGuard, setEditingGuard] = useState({
@@ -31,185 +39,302 @@ export default function GuardManagement() {
     siteId: ''
   })
 
-  const [showForm, setShowForm] = useState(false)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
-    request(`${BASE_URL}/api/guards`)
-      .then(res => res.json())
-      .then(setGuards)
-      .catch(err => {
-        console.error(err);
-        alert('获取保安列表失败');
-      });
+    const fetchData = async () => {
+      try {
+        const [guardsRes, sitesRes] = await Promise.all([
+          request(`${BASE_URL}/api/guards`),
+          request(`${BASE_URL}/api/sites`)
+        ]);
+        
+        const guardsData = await guardsRes.json();
+        const sitesData = await sitesRes.json();
+        
+        setGuards(guardsData);
+        setSites(sitesData);
+      } catch (error) {
+        console.error(error);
+        setError('获取数据失败，请刷新页面重试');
+      }
+    };
 
-
-    request(`${BASE_URL}/api/sites`)
-      .then(res => res.json())
-      .then(setSites)
-      .catch(err => {
-        console.error(err);
-        alert('获取单位列表失败');
-      });
+    fetchData();
   }, [])
 
-  const addGuard = () => {
-    if (!selectedSiteId) {
-      alert('请选择所属单位')
-      return
+  const addGuard = async () => {
+    if (!selectedSiteId || !newName || !newPhone) {
+      setError('请填写完整信息');
+      return;
     }
 
-    const payload = {
-      name: newName,
-      phoneNumber: newPhone,
-      site: { id: selectedSiteId }
-    }
+    try {
+      const payload = {
+        name: newName,
+        phoneNumber: newPhone,
+        site: { id: Number(selectedSiteId) }
+      };
 
-    request(`${BASE_URL}/api/guards`, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(newGuard => {
-        setGuards([...guards, newGuard])
-        setNewName('')
-        setNewPhone('')
-        setSelectedSiteId(null)
-        setShowForm(false)
-      })
-      .catch(err => {
-        console.error(err)
-        alert('添加保安失败')
-      })
-  }
+      const res = await request(`${BASE_URL}/api/guards`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      const newGuard = await res.json();
+      setGuards([...guards, newGuard]);
+      setNewName('');
+      setNewPhone('');
+      setSelectedSiteId('');
+      setIsAddDialogOpen(false);
+      setError('');
+    } catch (error) {
+      console.error(error);
+      setError('添加保安失败');
+    }
+  };
 
   const startEditing = (guard: Guard) => {
-    setEditingId(guard.id)
+    setEditingId(guard.id);
     setEditingGuard({
       name: guard.name,
       phoneNumber: guard.phoneNumber,
       employeeId: guard.employeeId,
       siteId: guard.site?.id?.toString() ?? ''
-    })
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
-  const saveEditing = () => {
-    const payload = {
-      id: editingId,
-      name: editingGuard.name,
-      employeeId: editingGuard.employeeId,
-      phoneNumber: editingGuard.phoneNumber,
-      site: { id: Number(editingGuard.siteId) }
+  const saveEditing = async () => {
+    if (!editingGuard.name || !editingGuard.phoneNumber || !editingGuard.siteId) {
+      setError('请填写完整信息');
+      return;
     }
 
-    request(`${BASE_URL}/api/guards/${editingId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(updated => {
-        setGuards(guards.map(g => g.id === updated.id ? updated : g))
-        setEditingId(null)
-        setEditingGuard({ name: '', phoneNumber: '', employeeId: '', siteId: '' })
-      })
-      .catch(() => alert('保存失败'))
-  }
+    try {
+      const payload = {
+        id: editingId,
+        name: editingGuard.name,
+        employeeId: editingGuard.employeeId,
+        phoneNumber: editingGuard.phoneNumber,
+        site: { id: Number(editingGuard.siteId) }
+      };
 
-  const deleteGuard = (id: number) => {
-    if (!confirm('确认删除该保安吗？')) return
+      const res = await request(`${BASE_URL}/api/guards/${editingId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
 
-    request(`${BASE_URL}/api/guards/${id}`, {
-      method: 'DELETE'
-    })
-      .then(() => setGuards(guards.filter(g => g.id !== id)))
-      .catch(() => alert('删除失败'))
-  }
+      const updated = await res.json();
+      setGuards(guards.map(g => g.id === updated.id ? updated : g));
+      setEditingId(null);
+      setEditingGuard({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+      setIsEditDialogOpen(false);
+      setError('');
+    } catch (error) {
+      console.error(error);
+      setError('保存失败');
+    }
+  };
+
+  const deleteGuard = async (id: number) => {
+    if (!confirm('确认删除该保安吗？')) return;
+
+    try {
+      await request(`${BASE_URL}/api/guards/${id}`, {
+        method: 'DELETE'
+      });
+      setGuards(guards.filter(g => g.id !== id));
+    } catch (error) {
+      console.error(error);
+      setError('删除失败');
+    }
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">保安管理</h1>
-
-      {!showForm && (
-        <button
-          className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={() => setShowForm(true)}
-        >
-          添加保安
-        </button>
-      )}
-
-      {showForm && (
-        <div className="mb-4 space-y-2 p-4 border rounded shadow bg-gray-50">
-          <h2 className="text-lg font-semibold">添加保安信息</h2>
-          <input className="border p-2 rounded w-full" placeholder="姓名" value={newName} onChange={e => setNewName(e.target.value)} />
-          <input className="border p-2 rounded w-full" placeholder="手机号" value={newPhone} onChange={e => setNewPhone(e.target.value)} />
-          <select className="border p-2 rounded w-full" value={selectedSiteId ?? ''} onChange={e => setSelectedSiteId(Number(e.target.value))}>
-            <option value="" disabled>请选择所属单位</option>
-            {sites.map(site => (
-              <option key={site.id} value={site.id}>{site.name}</option>
-            ))}
-          </select>
-          <div className="space-x-2">
-            <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" onClick={addGuard}>提交</button>
-            <button className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500" onClick={() => setShowForm(false)}>取消</button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">保安管理</h1>
+          <p className="text-muted-foreground mt-1">管理保安信息和分配</p>
         </div>
-      )}
-
-      <table className="w-full border border-gray-300">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2">ID</th>
-            <th className="border p-2">姓名</th>
-            <th className="border p-2">工号</th>
-            <th className="border p-2">手机号</th>
-            <th className="border p-2">单位</th>
-            <th className="border p-2">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {guards.map((guard) => (
-            <tr key={guard.id}>
-              <td className="border p-2 text-center">{guard.id}</td>
-              <td className="border p-2">
-                {editingId === guard.id ? (
-                  <input className="border p-1 rounded w-full" value={editingGuard.name} onChange={e => setEditingGuard({ ...editingGuard, name: e.target.value })} />
-                ) : guard.name}
-              </td>
-              <td className="border p-2">
-                {guard.employeeId}
-              </td>
-              <td className="border p-2">
-                {editingId === guard.id ? (
-                  <input className="border p-1 rounded w-full" value={editingGuard.phoneNumber} onChange={e => setEditingGuard({ ...editingGuard, phoneNumber: e.target.value })} />
-                ) : guard.phoneNumber}
-              </td>
-              <td className="border p-2">
-                {editingId === guard.id ? (
-                  <select className="border p-1 rounded w-full" value={editingGuard.siteId} onChange={e => setEditingGuard({ ...editingGuard, siteId: e.target.value })}>
-                    <option value="">请选择单位</option>
-                    {sites.map(site => (
-                      <option key={site.id} value={site.id}>{site.name}</option>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>添加保安</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>添加保安信息</DialogTitle>
+              <DialogDescription>
+                请填写新保安的基本信息
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Input
+                  placeholder="姓名"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  placeholder="手机号"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                />
+              </div>
+              <div>
+                <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择所属单位" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((site) => (
+                      <SelectItem key={site.id} value={site.id.toString()}>
+                        {site.name}
+                      </SelectItem>
                     ))}
-                  </select>
-                ) : (guard.site?.name ?? '未分配')}
-              </td>
-              <td className="border p-2 space-x-1 text-center">
-                {editingId === guard.id ? (
-                  <>
-                    <button className="px-2 py-1 bg-green-600 text-white rounded" onClick={saveEditing}>保存</button>
-                    <button className="px-2 py-1 bg-gray-400 text-white rounded" onClick={() => setEditingId(null)}>取消</button>
-                  </>
-                ) : (
-                  <>
-                    <button className="px-2 py-1 bg-blue-600 text-white rounded" onClick={() => startEditing(guard)}>编辑</button>
-                    <button className="px-2 py-1 bg-red-600 text-white rounded" onClick={() => deleteGuard(guard.id)}>删除</button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  </SelectContent>
+                </Select>
+              </div>
+              {error && (
+                <Alert>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddDialogOpen(false);
+                    setNewName('');
+                    setNewPhone('');
+                    setSelectedSiteId('');
+                    setError('');
+                  }}
+                >
+                  取消
+                </Button>
+                <Button onClick={addGuard}>提交</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>保安列表</CardTitle>
+          <CardDescription>
+            当前系统中所有保安的信息
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">ID</TableHead>
+                <TableHead>姓名</TableHead>
+                <TableHead>工号</TableHead>
+                <TableHead>手机号</TableHead>
+                <TableHead>单位</TableHead>
+                <TableHead className="w-32">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {guards.map((guard) => (
+                <TableRow key={guard.id}>
+                  <TableCell className="font-medium">{guard.id}</TableCell>
+                  <TableCell>{guard.name}</TableCell>
+                  <TableCell>{guard.employeeId}</TableCell>
+                  <TableCell>{guard.phoneNumber}</TableCell>
+                  <TableCell>{guard.site?.name ?? '未分配'}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditing(guard)}
+                      >
+                        编辑
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteGuard(guard.id)}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑保安信息</DialogTitle>
+            <DialogDescription>
+              修改保安的基本信息
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Input
+                placeholder="姓名"
+                value={editingGuard.name}
+                onChange={(e) => setEditingGuard({ ...editingGuard, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Input
+                placeholder="手机号"
+                value={editingGuard.phoneNumber}
+                onChange={(e) => setEditingGuard({ ...editingGuard, phoneNumber: e.target.value })}
+              />
+            </div>
+            <div>
+              <Select value={editingGuard.siteId} onValueChange={(value) => setEditingGuard({ ...editingGuard, siteId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择所属单位" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((site) => (
+                    <SelectItem key={site.id} value={site.id.toString()}>
+                      {site.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {error && (
+              <Alert>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingId(null);
+                  setEditingGuard({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+                  setError('');
+                }}
+              >
+                取消
+              </Button>
+              <Button onClick={saveEditing}>保存</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

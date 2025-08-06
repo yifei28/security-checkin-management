@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Admin {
   id: number;
@@ -74,75 +81,109 @@ export default function ManagerPage() {
   };
 
   return (
-    <div className="p-10 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700">管理员管理</h1>
-
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-
-      <div className="bg-white shadow rounded p-4 mb-6">
-        <h2 className="text-xl font-semibold mb-3">添加管理员</h2>
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            placeholder="用户名"
-            className="border rounded px-3 py-2 flex-1"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="密码"
-            className="border rounded px-3 py-2 flex-1"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <label className="flex items-center text-sm">
-            <input
-              type="checkbox"
-              checked={isSuper}
-              onChange={(e) => setIsSuper(e.target.checked)}
-              className="mr-1"
-            />
-            超级管理员
-          </label>
-          <button
-            onClick={handleAdd}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            添加
-          </button>
-        </div>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">管理员管理</h1>
+        <p className="text-muted-foreground mt-1">管理系统管理员账户和权限</p>
       </div>
 
-      <table className="w-full table-auto border-collapse bg-white shadow rounded">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-4 py-2 text-left">ID</th>
-            <th className="border px-4 py-2 text-left">用户名</th>
-            <th className="border px-4 py-2 text-left">角色</th>
-            <th className="border px-4 py-2 text-left">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {admins.map((admin) => (
-            <tr key={admin.id}>
-              <td className="border px-4 py-2">{admin.id}</td>
-              <td className="border px-4 py-2">{admin.username}</td>
-              <td className="border px-4 py-2">
-                {admin.superAdmin ? "超级管理员" : "普通管理员"}
-              </td>
-              <td className="border px-4 py-2">
-                <button
-                  onClick={() => handleDelete(admin.id)}
-                  className="text-red-600 hover:underline"
-                >
-                  删除
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Card>
+        <CardHeader>
+          <CardTitle>添加新管理员</CardTitle>
+          <CardDescription>
+            创建新的管理员账户，可以设置为普通管理员或超级管理员
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <Input
+                type="text"
+                placeholder="用户名"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="super-admin"
+                checked={isSuper}
+                onCheckedChange={(checked) => setIsSuper(checked as boolean)}
+              />
+              <label htmlFor="super-admin" className="text-sm font-medium">
+                超级管理员
+              </label>
+            </div>
+            <div>
+              <Button onClick={handleAdd} className="w-full">
+                添加管理员
+              </Button>
+            </div>
+          </div>
+          {error && (
+            <Alert className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>管理员列表</CardTitle>
+          <CardDescription>
+            当前系统中所有管理员账户
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {admins.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">暂无管理员账户</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">ID</TableHead>
+                  <TableHead>用户名</TableHead>
+                  <TableHead>角色</TableHead>
+                  <TableHead className="w-32">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell className="font-medium">{admin.id}</TableCell>
+                    <TableCell>{admin.username}</TableCell>
+                    <TableCell>
+                      <Badge variant={admin.superAdmin ? "default" : "secondary"}>
+                        {admin.superAdmin ? "超级管理员" : "普通管理员"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(admin.id)}
+                      >
+                        删除
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

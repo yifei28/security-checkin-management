@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -27,7 +30,7 @@ export default function LoginPage() {
             const data = await res.json();
             localStorage.setItem("token", data.token);
             localStorage.setItem("superAdmin", data.superAdmin);
-            window.location.href = "/admin"; // 登录成功跳转页面
+            window.location.href = "/admin";
         } else {
             const msg = await res.text();
             setError(msg || "登录失败");
@@ -38,42 +41,72 @@ export default function LoginPage() {
     } finally {
         setLoading(false);
     }
-};
+  };
 
-    return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-        <div className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-            <h2 className="text-xl font-semibold mb-4 text-center">管理员登录</h2>
-            {error && <div className="text-red-500 mb-2">{error}</div>}
-
-            <form
-                onSubmit={(e) => {
-                e.preventDefault(); // 阻止表单自动刷新页面
-                login();             // 调用你原来的 login 方法
-                }}
-            >
-                <input
-                    className="border border-gray-300 rounded px-3 py-2 w-full mb-3"
-                    placeholder="用户名"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                />
-                <input
-                    className="border border-gray-300 rounded px-3 py-2 w-full mb-4"
-                    placeholder="密码"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                    type="submit"
-                    className="bg-blue-500 text-white px-4 py-2 rounded w-full"
-                    disabled={loading}
-                >
-                {loading ? "登录中..." : "登录"}
-                </button>
-            </form>
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold mb-2">
+            安全巡检管理系统
+          </h1>
         </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-center">管理员登录</CardTitle>
+          </CardHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            login();
+          }}>
+            <CardContent className="space-y-4">
+              {error && (
+                <div className="text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="用户名"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  placeholder="密码"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+            </CardContent>
+            
+            <CardFooter className="pt-6">
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading}
+              >
+                {loading ? "登录中..." : "登录"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+        
+        <div className="text-center mt-6">
+          <p className="text-sm text-muted-foreground">
+            管理门户 - 需要安全访问
+          </p>
+        </div>
+      </div>
     </div>
-    );
+  );
 }

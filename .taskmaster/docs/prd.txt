@@ -1,0 +1,159 @@
+<context>
+# Overview  
+The Security Company Admin Web Portal is a web-based dashboard designed for managers of security personnel companies. It provides a centralized interface to manage operational data such as guard rosters, company units (sites), and check-in records. This tool is essential for modernizing workforce supervision, identifying attendance anomalies, verifying guard deployment, and reducing fraud related to false reports by team leaders. By connecting to a backend API, it visualizes critical data in real time to aid data-driven decisions.
+
+# Core Features  
+1. Guard Management
+    - What it does: View, add, edit, and remove guards in the company database.
+
+    - Why it's important: Enables HR-level supervision, especially for tracking individual guards' attendance and assignments.
+
+    - How it works: Fetch guard records from the backend API and display them in searchable/filterable tables. Admins can create new records through a form that sends POST requests.
+
+2. Site (Unit) Management
+    - What it does: Manage all work locations the guards are assigned to.
+
+    - Why it's important: Ensures every check-in event can be validated against a location's rules (e.g. allowed range).
+
+    - How it works: CRUD UI for sites, where each site has attributes like name, latitude, longitude, and list of assigned guards.
+
+3. Check-in Record Viewer
+    - What it does: Displays guard check-in records including timestamp, photo (from face verification), GPS location, and pass/fail validation.
+
+    - Why it's important: Allows auditability and prevents fraudulent attendance reporting.
+
+    - How it works: Paginated table with filtering (by date, guard, site). Photos and map links included per record.
+
+4. Dashboard Summary (Optional MVP+)
+    - What it does: Provides metrics like total check-ins, failed verifications, per-site attendance rates, and missing shifts. It should also help managers visualizes the basic stats such as age and height of the guards per sites and in general.
+
+    - Why it's important: Helps managers get a real-time overview of operations and guards.
+
+# User Experience  
+User Personas
+    - Operations Manager: Focuses on cross-site personnel tracking and verifying attendance trends.
+
+    - HR/Admin Assistant: Manages guard profiles and onboarding/offboarding.
+
+    - Compliance Auditor: Reviews check-in failures or suspicious patterns for investigation.
+
+Key User Flows
+    - Login (JWT-Based Authentication) → View Dashboard → Inspect Daily Check-ins
+
+    - Manage Guards → Add New Guard → Assign to Site
+
+    - View Sites → Filter Site by Region → View Assigned Guards
+
+    - Check Check-in Record → Filter by Date → Open Map / View Face Photo → Export Data
+
+UI/UX Considerations
+    - Responsive design with desktop-first layout.
+
+    - Tabular and card layouts for fast scanning.
+
+    - Minimal, clean aesthetic using modern admin UI frameworks (e.g. Ant Design or Tailwind UI).
+
+    - Fast page load, optimistic UI updates where applicable.
+
+    - Error feedback and loading states for API interactions.
+</context>
+<PRD>
+# Technical Architecture  
+System Components
+    - Frontend: React-based SPA (likely using Vite or CRA), built with TypeScript.
+
+    - Backend API: Spring Boot RESTful API (already implemented by user).
+
+    - Auth: JWT-based auth via secure login flow.
+
+    - Map & Geolocation: Map links to Gaode Map or OpenStreetMap.
+
+    - Photo Viewer: Embedded image preview in records.
+
+Data Models (Frontend Representation)
+    - Guard: id, name, phoneNumber, photoUrl, assignedSiteIds[]
+
+    - Site: id, name, latitude, longitude, assignedGuardIds[]
+
+    - CheckInRecord: id, guardId, siteId, timestamp, location, faceImageUrl, status (PASS/FAIL), reason
+
+APIs and Integrations
+    - GET /api/guards, POST /api/guards
+
+    - GET /api/sites, POST /api/sites
+
+    - GET /api/checkin
+
+    - GET /api/dashboard-metrics (optional for MVP)
+
+    - Auth API: POST /api/auth/login returns JWT
+
+Infrastructure Requirements
+    - Static hosting (e.g. Vercel, Netlify, or Nginx on VPS)
+
+    - CORS setup on backend
+
+    - API rate-limiting and auth token expiration handling
+
+    - CDN for fast asset delivery (optional)
+
+# Development Roadmap  
+MVP Requirements
+Login UI + JWT token storage
+
+    - Guard Management (view, add, edit, delete)
+
+    - Site Management (view, add, edit, delete)
+
+    - Check-in Record Viewer with filters and photo/map links
+
+    - Error/loading states for all API interactions
+
+    - Basic responsive layout
+
+Phase 2 (Enhancements)
+    - Dashboard metrics view (attendance rate, missing check-ins, etc.)
+
+    - Export to CSV for check-in records
+
+    - Guard detail view with timeline of check-ins
+
+    - atch import of guards via CSV
+
+    - Role-based access control (e.g. read-only auditor role)
+
+Phase 3 (Advanced & Analytics)
+    - Custom alerts (e.g. guard missed check-in notification)
+
+    - Heatmaps of activity per site
+
+    - Graph-based scheduling / shift management module
+
+    - Mobile web optimization for on-the-go management
+
+# Logical Dependency Chain
+    - Login and Token Management – prerequisite for all secure API interactions
+
+    - Guard and Site Management – foundational data models for all other flows
+
+    - Check-in Viewer – first core value delivery for auditors and managers
+
+    - Dashboard – can build on top of existing guard/site/check-in data
+
+    - Export/Detail Views – augment existing check-in viewer functionality
+
+    - Analytics and Alerts – depends on data accumulation and dashboard success
+
+# Risks and Mitigations  
+    - Risk: Backend API changes or inconsistencies
+    - Mitigation: Use TypeScript interfaces and clearly documented API schemas with Axios or React Query for typed interaction
+
+    - Risk: MVP too feature-heavy
+    - Mitigation: Focus on guard/site/check-in view only. Defer analytics and exports to post-MVP.
+
+    - Risk: UI complexity / performance
+    - Mitigation: Use virtualized tables and lazy loading for check-in records; keep dependencies lean.
+
+    - Risk: Auth token expiration
+    - Mitigation: Use interceptor for automatic logout or token refresh logic
+</PRD>
