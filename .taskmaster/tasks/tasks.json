@@ -120,8 +120,74 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install and configure axios with base setup",
+            "description": "Install axios and create base HTTP client configuration",
+            "dependencies": [],
+            "details": "Install axios@^1.6.0 via npm. Create src/api/client.ts with base axios instance configuration including baseURL pointing to backend API (from config.ts), default headers, and timeout settings. Set up TypeScript interfaces for common API response formats.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement request interceptor for authentication",
+            "description": "Add request interceptor to automatically include Bearer tokens",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Create axios request interceptor that automatically adds Authorization header with Bearer token from localStorage. Handle cases where token doesn't exist gracefully. Include proper TypeScript typing for interceptor configuration.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create response interceptor for error handling",
+            "description": "Implement response interceptor for 401 errors and automatic logout",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Add axios response interceptor to handle HTTP errors, specifically 401 responses that trigger automatic logout and token cleanup. Include retry logic for network failures and proper error transformation for consistent error handling across the app.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Build individual API service modules",
+            "description": "Create separate API service modules for each domain",
+            "dependencies": [
+              "5.2",
+              "5.3"
+            ],
+            "details": "Create individual API service files: authApi.ts (login, logout, refresh), guardsApi.ts (CRUD operations), sitesApi.ts (CRUD operations), checkinsApi.ts (CRUD operations). Each module should use the configured axios client and provide typed methods for all API endpoints.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate React Query for caching and state management",
+            "description": "Set up React Query with proper caching strategies",
+            "dependencies": [
+              "5.4"
+            ],
+            "details": "Install @tanstack/react-query@^5.0.0. Create QueryClient configuration with appropriate cache times and stale times. Set up query keys factory for consistent key management. Implement custom hooks for each API service using useQuery and useMutation. Configure optimistic updates and background refetching.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement error boundary for API failures",
+            "description": "Create error boundary component for handling API-related errors",
+            "dependencies": [
+              "5.5"
+            ],
+            "details": "Install react-error-boundary@^4.0.0. Create APIErrorBoundary component that catches and displays API errors gracefully. Provide fallback UI with retry functionality. Integrate with React Query error handling and ensure proper error logging for debugging.",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 6,
@@ -134,7 +200,7 @@
           3,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -148,7 +214,7 @@
           5,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -162,7 +228,7 @@
           5,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -176,7 +242,7 @@
           7,
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -189,7 +255,7 @@
         "dependencies": [
           9
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": []
       },
       {
@@ -221,7 +287,7 @@
     ],
     "metadata": {
       "created": "2025-08-06T03:41:19.882Z",
-      "updated": "2025-08-06T04:14:52.499Z",
+      "updated": "2025-08-10T03:52:59.817Z",
       "description": "Tasks for master context"
     }
   }

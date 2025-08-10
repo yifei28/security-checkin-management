@@ -6,6 +6,58 @@
  */
 
 /**
+ * Pagination interfaces for API requests and responses
+ */
+export interface PaginationParams {
+  /** Page number (1-based) */
+  page: number;
+  /** Number of items per page */
+  pageSize: number;
+  /** Field to sort by */
+  sortBy?: string;
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginationResponse {
+  /** Total number of items */
+  total: number;
+  /** Current page number */
+  page: number;
+  /** Number of items per page */
+  pageSize: number;
+  /** Total number of pages */
+  totalPages: number;
+}
+
+/**
+ * API Response with optional pagination
+ */
+/**
+ * Statistics for check-in records
+ */
+export interface CheckInStatistics {
+  /** Total number of records matching the filter */
+  totalRecords: number;
+  /** Number of successful check-ins */
+  successCount: number;
+  /** Number of failed check-ins */
+  failedCount: number;
+  /** Number of pending check-ins */
+  pendingCount: number;
+  /** Success rate percentage */
+  successRate: number;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination?: PaginationResponse;
+  message?: string;
+  statistics?: CheckInStatistics;
+}
+
+/**
  * Guard interface represents a security guard in the system
  */
 export interface Guard {
@@ -41,6 +93,9 @@ export interface Site {
   /** Geographic longitude coordinate */
   longitude: number;
   
+  /** Allowed check-in radius in meters */
+  allowedRadiusMeters: number;
+  
   /** Array of guard IDs assigned to this site */
   assignedGuardIds: string[];
 }
@@ -75,7 +130,7 @@ export interface CheckInRecord {
   siteId: string;
   
   /** Timestamp when the check-in was performed */
-  timestamp: Date;
+  timestamp: string;
   
   /** GPS location coordinates of the check-in */
   location: Location;
@@ -112,7 +167,7 @@ export type HttpStatusCode = typeof HttpStatusCode[keyof typeof HttpStatusCode];
 /**
  * Generic API response wrapper for consistent API communication
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponseGeneric<T = unknown> {
   /** Response data payload */
   data: T;
   
@@ -156,14 +211,14 @@ export interface ApiError {
 }
 
 /**
- * Pagination metadata for list responses
+ * Pagination metadata for list responses - unified with PaginationResponse
  */
 export interface PaginationMeta {
   /** Total number of items across all pages */
-  totalCount: number;
+  total: number;
   
   /** Current page number (1-indexed) */
-  currentPage: number;
+  page: number;
   
   /** Number of items per page */
   pageSize: number;
@@ -179,11 +234,23 @@ export interface PaginationMeta {
 }
 
 /**
- * Paginated API response extending the base ApiResponse
+ * Paginated API response
  */
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+export interface PaginatedResponse<T> {
+  /** Response data payload */
+  data: T[];
+  /** Indicates if the request was successful */
+  success: boolean;
+  /** Human-readable message about the response */
+  message: string;
   /** Pagination metadata */
   pagination: PaginationMeta;
+  /** Optional array of error messages for detailed error reporting */
+  errors?: string[];
+  /** HTTP status code */
+  statusCode?: HttpStatusCode;
+  /** Request timestamp */
+  timestamp?: string;
 }
 
 /**
@@ -226,10 +293,10 @@ export interface User {
   role: UserRole;
   
   /** Account creation timestamp */
-  createdAt: Date;
+  createdAt: string;
   
   /** Optional last login timestamp */
-  lastLoginAt?: Date;
+  lastLoginAt?: string;
   
   /** Full name of the user */
   fullName?: string;
@@ -397,6 +464,108 @@ export type CheckInSummary = Pick<CheckInRecord, 'id' | 'timestamp' | 'status'>;
 export type EntityStatus = 'loading' | 'success' | 'error' | 'idle';
 
 /**
+ * Extended API types for enhanced functionality
+ */
+
+/**
+ * Form data interfaces for API requests
+ */
+export interface GuardFormData {
+  name: string;
+  phoneNumber: string;
+  photoUrl?: string;
+  assignedSiteIds: string[];
+}
+
+export interface SiteFormData {
+  name: string;
+  latitude: number;
+  longitude: number;
+  assignedGuardIds: string[];
+}
+
+/**
+ * Assignment request interfaces
+ */
+export interface GuardAssignmentRequest {
+  guardId: string;
+  siteIds: string[];
+}
+
+export interface SiteAssignmentRequest {
+  siteId: string;
+  guardIds: string[];
+}
+
+/**
+ * Bulk update request interfaces
+ */
+export interface GuardBulkUpdateRequest {
+  id: string;
+  updates: Partial<GuardFormData>;
+}
+
+export interface SiteBulkUpdateRequest {
+  id: string;
+  updates: Partial<SiteFormData>;
+}
+
+/**
+ * Enhanced summary interfaces for dashboard and analytics
+ */
+export interface EnhancedGuardSummary {
+  guardId: string;
+  guardName: string;
+  totalCheckIns: number;
+  successfulCheckIns: number;
+  failedCheckIns: number;
+  successRate: number;
+  assignedSites: number;
+  lastCheckIn?: string;
+}
+
+export interface EnhancedSiteSummary {
+  siteId: string;
+  siteName: string;
+  totalCheckIns: number;
+  successfulCheckIns: number;
+  failedCheckIns: number;
+  successRate: number;
+  assignedGuards: number;
+  lastCheckIn?: string;
+}
+
+export interface CheckInRecordSummary {
+  date: string;
+  totalCheckIns: number;
+  successfulCheckIns: number;
+  failedCheckIns: number;
+  successRate: number;
+  uniqueGuards: number;
+  uniqueSites: number;
+}
+
+/**
+ * Dashboard statistics interface
+ */
+export interface DashboardStats {
+  totalGuards: number;
+  totalSites: number;
+  totalCheckIns: number;
+  todayCheckIns: number;
+  successfulCheckIns: number;
+  failedCheckIns: number;
+  successRate: number;
+  activeGuards: number;
+  activeSites: number;
+  recentCheckIns: CheckInRecord[];
+  checkInTrends: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+/**
  * Generic form state type
  */
 export interface FormState<T> {
@@ -416,7 +585,7 @@ export interface ListState<T> {
   error: string | null;
   pagination: PaginationMeta | null;
   selectedItems: T[];
-  filters: Record<string, any>;
+  filters: Record<string, unknown>;
 }
 
 /**
@@ -490,7 +659,7 @@ export function isCheckInRecord(value: unknown): value is CheckInRecord {
     typeof (value as any).id === 'string' &&
     typeof (value as any).guardId === 'string' &&
     typeof (value as any).siteId === 'string' &&
-    (value as any).timestamp instanceof Date &&
+    typeof (value as any).timestamp === 'string' &&
     typeof (value as any).location === 'object' &&
     typeof (value as any).faceImageUrl === 'string' &&
     ['success', 'failed', 'pending'].includes((value as any).status)
@@ -512,7 +681,7 @@ export function isUser(value: unknown): value is User {
     typeof (value as any).id === 'string' &&
     typeof (value as any).username === 'string' &&
     ['admin', 'superAdmin'].includes((value as any).role) &&
-    (value as any).createdAt instanceof Date &&
+    typeof (value as any).createdAt === 'string' &&
     typeof (value as any).isActive === 'boolean'
   );
 }
@@ -646,6 +815,15 @@ export type FunctionParams<T extends (...args: any[]) => any> = T extends (...ar
  * Function return type utility
  */
 export type FunctionReturn<T extends (...args: any[]) => any> = T extends (...args: any[]) => infer R ? R : never;
+
+// ===================================================================
+// API Client Types
+// ===================================================================
+
+/**
+ * Re-export common axios types for convenience
+ */
+export type { AxiosError, AxiosHeaders } from 'axios';
 
 // ===================================================================
 // Re-export Validation Schemas

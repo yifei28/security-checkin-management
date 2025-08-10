@@ -1,0 +1,457 @@
+/**
+ * Sites API Service
+ * 
+ * Provides typed methods for all site-related API endpoints
+ * including CRUD operations, guard assignments, and geolocation management.
+ */
+
+import { api } from './client';
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  Site,
+  SiteFormData,
+  EnhancedSiteSummary as SiteSummary,
+  SiteAssignmentRequest,
+  SiteBulkUpdateRequest,
+  Location,
+} from '../types';
+
+/**
+ * Sites API service object
+ * Contains all methods for site management operations
+ */
+export const sitesApi = {
+  /**
+   * Get all sites with optional filtering and pagination
+   */
+  async getSites(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    guardId?: string;
+    withinRadius?: { 
+      center: Location; 
+      radiusKm: number; 
+    };
+    sortBy?: 'name' | 'latitude' | 'longitude' | 'createdAt';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<PaginatedResponse<Site>> {
+    try {
+      const response = await api.get<Site[]>('/api/sites', {
+        params: {
+          page: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 20,
+          search: params?.search,
+          guardId: params?.guardId,
+          withinRadius: params?.withinRadius ? JSON.stringify(params.withinRadius) : undefined,
+          sortBy: params?.sortBy ?? 'name',
+          sortOrder: params?.sortOrder ?? 'asc',
+        }
+      });
+      
+      console.log('[SITES API] Retrieved sites list');
+      
+      // The server should return a PaginatedResponse, but we need to handle the ApiResponse wrapper  
+      const apiResponse = response.data as any;
+      return apiResponse;
+    } catch (error) {
+      console.error('[SITES API] Failed to get sites:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a specific site by ID
+   */
+  async getSite(siteId: string): Promise<ApiResponse<Site>> {
+    try {
+      const response = await api.get<Site>(`/api/sites/${siteId}`);
+      
+      console.log(`[SITES API] Retrieved site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new site
+   */
+  async createSite(siteData: SiteFormData): Promise<ApiResponse<Site>> {
+    try {
+      const response = await api.post<Site>('/api/sites', siteData);
+      
+      if (response.data.success && response.data.data) {
+        console.log(`[SITES API] Created site: ${response.data.data.name}`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to create site:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing site
+   */
+  async updateSite(siteId: string, siteData: Partial<SiteFormData>): Promise<ApiResponse<Site>> {
+    try {
+      const response = await api.put<Site>(`/api/sites/${siteId}`, siteData);
+      
+      if (response.data.success && response.data.data) {
+        console.log(`[SITES API] Updated site: ${response.data.data.name}`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to update site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a site
+   */
+  async deleteSite(siteId: string): Promise<ApiResponse<null>> {
+    try {
+      const response = await api.delete<null>(`/api/sites/${siteId}`);
+      
+      console.log(`[SITES API] Deleted site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to delete site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get sites assigned to a specific guard
+   */
+  async getSitesByGuard(guardId: string): Promise<ApiResponse<Site[]>> {
+    try {
+      const response = await api.get<Site[]>(`/api/guards/${guardId}/sites`);
+      
+      console.log(`[SITES API] Retrieved sites for guard: ${guardId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get sites for guard ${guardId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Assign guards to a site
+   */
+  async assignGuardsToSite(siteId: string, guardIds: string[]): Promise<ApiResponse<Site>> {
+    try {
+      const assignmentData: SiteAssignmentRequest = {
+        siteId,
+        guardIds,
+      };
+      
+      const response = await api.post<Site>('/api/sites/assign', assignmentData);
+      
+      if (response.data.success) {
+        console.log(`[SITES API] Assigned ${guardIds.length} guards to site: ${siteId}`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to assign guards to site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Remove guards from a site
+   */
+  async unassignGuardsFromSite(siteId: string, guardIds: string[]): Promise<ApiResponse<Site>> {
+    try {
+      const response = await api.post<Site>('/api/sites/unassign', {
+        siteId,
+        guardIds,
+      });
+      
+      if (response.data.success) {
+        console.log(`[SITES API] Unassigned ${guardIds.length} guards from site: ${siteId}`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to unassign guards from site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get site summary statistics
+   */
+  async getSiteSummary(siteId: string): Promise<ApiResponse<SiteSummary>> {
+    try {
+      const response = await api.get<SiteSummary>(`/api/sites/${siteId}/summary`);
+      
+      console.log(`[SITES API] Retrieved summary for site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get site summary ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get sites summary for dashboard
+   */
+  async getAllSitesSummary(): Promise<ApiResponse<SiteSummary[]>> {
+    try {
+      const response = await api.get<SiteSummary[]>('/api/sites/summary');
+      
+      console.log('[SITES API] Retrieved sites summary');
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to get sites summary:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get sites within a geographic area (for map display)
+   */
+  async getSitesInArea(bounds: {
+    northEast: Location;
+    southWest: Location;
+  }): Promise<ApiResponse<Site[]>> {
+    try {
+      const response = await api.post<Site[]>('/api/sites/in-area', bounds);
+      
+      console.log('[SITES API] Retrieved sites in geographic area');
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to get sites in area:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get nearest sites to a location
+   */
+  async getNearestSites(location: Location, limit?: number): Promise<ApiResponse<Array<Site & { distance: number }>>> {
+    try {
+      const response = await api.post<Array<Site & { distance: number }>>(
+        '/api/sites/nearest',
+        {
+          location,
+          limit: limit ?? 10,
+        }
+      );
+      
+      console.log('[SITES API] Retrieved nearest sites');
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to get nearest sites:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate site coordinates and address
+   */
+  async validateSiteLocation(location: Location, address?: string): Promise<ApiResponse<{
+    isValid: boolean;
+    validatedLocation?: Location;
+    validatedAddress?: string;
+    suggestions?: string[];
+  }>> {
+    try {
+      const response = await api.post<{
+        isValid: boolean;
+        validatedLocation?: Location;
+        validatedAddress?: string;
+        suggestions?: string[];
+      }>('/api/sites/validate-location', {
+        location,
+        address,
+      });
+      
+      console.log('[SITES API] Validated site location');
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to validate site location:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Bulk update multiple sites
+   */
+  async bulkUpdateSites(updates: SiteBulkUpdateRequest[]): Promise<ApiResponse<Site[]>> {
+    try {
+      const response = await api.post<Site[]>('/api/sites/bulk-update', { updates });
+      
+      if (response.data.success) {
+        console.log(`[SITES API] Bulk updated ${updates.length} sites`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to bulk update sites:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Bulk delete multiple sites
+   */
+  async bulkDeleteSites(siteIds: string[]): Promise<ApiResponse<{ deletedCount: number }>> {
+    try {
+      const response = await api.post<{ deletedCount: number }>('/api/sites/bulk-delete', { 
+        siteIds 
+      });
+      
+      if (response.data.success) {
+        console.log(`[SITES API] Bulk deleted ${siteIds.length} sites`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to bulk delete sites:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search sites with advanced filtering
+   */
+  async searchSites(query: string, filters?: {
+    guardIds?: string[];
+    locationRadius?: {
+      center: Location;
+      radiusKm: number;
+    };
+    hasGuards?: boolean;
+  }): Promise<ApiResponse<Site[]>> {
+    try {
+      const response = await api.post<Site[]>('/api/sites/search', {
+        query,
+        filters,
+      });
+      
+      console.log(`[SITES API] Searched sites with query: "${query}"`);
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to search sites:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get site check-in statistics
+   */
+  async getSiteCheckInStats(siteId: string, dateRange: {
+    startDate: string;
+    endDate: string;
+  }): Promise<ApiResponse<{
+    totalCheckIns: number;
+    successfulCheckIns: number;
+    failedCheckIns: number;
+    averageCheckInsPerDay: number;
+    peakHours: Array<{ hour: number; count: number }>;
+  }>> {
+    try {
+      const response = await api.post<{
+        totalCheckIns: number;
+        successfulCheckIns: number;
+        failedCheckIns: number;
+        averageCheckInsPerDay: number;
+        peakHours: Array<{ hour: number; count: number }>;
+      }>(`/api/sites/${siteId}/checkin-stats`, dateRange);
+      
+      console.log(`[SITES API] Retrieved check-in stats for site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get check-in stats for site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update site geofence settings
+   */
+  async updateSiteGeofence(siteId: string, geofence: {
+    radiusMeters: number;
+    strictMode: boolean;
+  }): Promise<ApiResponse<Site>> {
+    try {
+      const response = await api.put<Site>(`/api/sites/${siteId}/geofence`, geofence);
+      
+      if (response.data.success) {
+        console.log(`[SITES API] Updated geofence for site: ${siteId}`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to update geofence for site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Export sites data to CSV
+   */
+  async exportSites(filters?: {
+    guardIds?: string[];
+    dateRange?: { startDate: string; endDate: string };
+    locationBounds?: {
+      northEast: Location;
+      southWest: Location;
+    };
+  }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> {
+    try {
+      const response = await api.post<{ downloadUrl: string; fileName: string }>(
+        '/api/sites/export',
+        { filters }
+      );
+      
+      if (response.data.success) {
+        console.log('[SITES API] Generated sites export');
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[SITES API] Failed to export sites:', error);
+      throw error;
+    }
+  },
+};
+
+/**
+ * Export individual methods for advanced usage
+ */
+export const {
+  getSites,
+  getSite,
+  createSite,
+  updateSite,
+  deleteSite,
+  getSitesByGuard,
+  assignGuardsToSite,
+  unassignGuardsFromSite,
+  getSiteSummary,
+  getAllSitesSummary,
+  getSitesInArea,
+  getNearestSites,
+  validateSiteLocation,
+  bulkUpdateSites,
+  bulkDeleteSites,
+  searchSites,
+  getSiteCheckInStats,
+  updateSiteGeofence,
+  exportSites,
+} = sitesApi;
+
+/**
+ * Export default as sitesApi for convenience
+ */
+export default sitesApi;

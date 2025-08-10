@@ -11,4 +11,25 @@ export default defineConfig({
       "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "./src"),
     },
   },
+  server: {
+    proxy: {
+      // Proxy all /api requests to backend server
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log(`[PROXY] ${req.method} ${req.url} -> ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log(`[PROXY] ${req.method} ${req.url} <- ${proxyRes.statusCode}`);
+          });
+        }
+      }
+    }
+  }
 })

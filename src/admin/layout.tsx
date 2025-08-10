@@ -1,17 +1,24 @@
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { logout } from "../util/auth";
+import { useAuth } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isRefreshing, refreshError, refreshToken, clearError, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleRetryRefresh = async () => {
+    clearError();
+    await refreshToken();
   };
 
   const isActivePath = (path: string) => {
@@ -31,6 +38,12 @@ export default function AdminLayout() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">安全巡检管理系统</h2>
           <p className="text-sm text-muted-foreground mt-1">管理后台</p>
+          {user && (
+            <p className="text-xs text-muted-foreground mt-1">
+              欢迎，{user.fullName || user.username}
+              {user.role === 'superAdmin' && <span className="text-blue-600 ml-1">(超级管理员)</span>}
+            </p>
+          )}
         </div>
         
         <Separator className="mb-6" />
@@ -52,6 +65,33 @@ export default function AdminLayout() {
         </nav>
         
         <Separator className="my-6" />
+        
+        {/* Session Status and Recovery */}
+        {isRefreshing && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />
+              <p className="text-xs text-blue-700">正在刷新会话...</p>
+            </div>
+          </div>
+        )}
+        
+        {refreshError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              会话刷新失败：{refreshError}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRetryRefresh}
+                className="ml-2 h-auto p-1 text-xs underline"
+              >
+                重试
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Button 
           onClick={handleLogout} 

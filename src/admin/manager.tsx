@@ -27,7 +27,8 @@ export default function ManagerPage() {
       const res = await request(`${BASE_URL}/api/admin`);
       const data = await res.json();
       setAdmins(data);
-    } catch (err) {
+    } catch (err: unknown) {
+      console.error('Failed to fetch admins:', err);
       setError("无法获取管理员列表");
     }
   };
@@ -62,7 +63,8 @@ export default function ManagerPage() {
         const msg = await res.text();
         setError(msg || "添加失败");
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      console.error('Failed to add admin:', err);
       setError("网络错误，添加失败");
     }
   };
@@ -75,7 +77,8 @@ export default function ManagerPage() {
         method: "DELETE",
       });
       fetchAdmins();
-    } catch (err) {
+    } catch (err: unknown) {
+      console.error('Failed to delete admin:', err);
       setError("删除失败");
     }
   };

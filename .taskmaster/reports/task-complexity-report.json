@@ -1,0 +1,21 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-06T04:20:01.653Z",
+		"tasksAnalyzed": 1,
+		"totalTasks": 12,
+		"analysisCount": 1,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 5,
+			"taskTitle": "HTTP Client and API Integration Layer",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the HTTP client setup into: axios installation and base configuration, request interceptor for authentication, response interceptor for error handling, individual API service modules creation, React Query integration with caching strategies, and error boundary implementation for API failures.",
+			"reasoning": "High complexity due to multiple integration points: axios configuration, interceptors, multiple API modules, React Query setup, and error boundaries. Requires careful coordination between authentication, caching, and error handling systems. Critical foundation piece that affects entire application."
+		}
+	]
+}
