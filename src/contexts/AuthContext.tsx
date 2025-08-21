@@ -478,19 +478,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       };
       setAuthData(token, userForStorage, user.role === 'superAdmin');
 
-      // Handle remember me functionality
-      if (credentials.rememberMe) {
-        const userToSave = {
-          username: credentials.username,
-          rememberMe: true
-        };
-        localStorage.setItem('user', JSON.stringify(userToSave));
-        console.log('[AUTH] Saved user data for remember me:', userToSave);
-      } else {
-        localStorage.removeItem('user');
-        console.log('[AUTH] Remember me not checked, cleared saved user data');
-      }
-
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: { user, token }

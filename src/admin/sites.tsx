@@ -59,6 +59,15 @@ interface SiteFormData {
 //   id: string
 // }
 
+// 辅助函数：去掉 ID 前缀，返回纯数字或原始字符串
+const stripIdPrefix = (id: string | number, prefix: string): string => {
+  const idStr = String(id);
+  if (idStr && idStr.startsWith(prefix)) {
+    return idStr.replace(prefix, '');
+  }
+  return idStr;
+};
+
 // Map click handler component
 interface LocationSelectorProps {
   position: [number, number]
@@ -121,16 +130,16 @@ export default function SiteManagement() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mapCenter] = useState<[number, number]>([39.9042, 116.4074]) // Beijing default
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError('');
-      
-      try {
-        const [sitesRes, guardsRes] = await Promise.all([
-          request(`${BASE_URL}/api/sites`),
-          request(`${BASE_URL}/api/guards`)
-        ]);
+  // 封装数据获取逻辑
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const [sitesRes, guardsRes] = await Promise.all([
+        request(`${BASE_URL}/api/sites`),
+        request(`${BASE_URL}/api/guards`)
+      ]);
         
         if (!sitesRes.ok) {
           throw new Error(`获取站点数据失败: ${sitesRes.status}`);
@@ -158,6 +167,7 @@ export default function SiteManagement() {
       }
     };
 
+  useEffect(() => {
     fetchData();
   }, [])
 
@@ -216,8 +226,25 @@ export default function SiteManagement() {
         throw new Error(errorText || '添加站点失败');
       }
 
-      const newSite: SiteResponse = await res.json();
-      setSites(prev => [...prev, newSite]);
+      const newSiteResponse = await res.json();
+      // 处理可能的响应格式差异
+      const newSiteData = newSiteResponse.data || newSiteResponse;
+      
+      // 确保ID是字符串类型，避免startsWith错误
+      const newSite: SiteResponse = {
+        ...newSiteData,
+        id: String(newSiteData.id),
+        assignedGuardIds: newSiteData.assignedGuardIds?.map((id: any) => String(id)) || []
+      };
+      
+      console.log('[SITES] Add response:', newSite);
+      
+      // 添加新站点到列表
+      setSites(prev => {
+        const updatedList = [...prev, newSite];
+        console.log('[SITES] Updated sites list after add:', updatedList);
+        return updatedList;
+      });
       
       // Reset form
       setAddForm({ name: '', latitude: '', longitude: '', allowedRadiusMeters: '', assignedGuardIds: [] });
@@ -260,8 +287,11 @@ export default function SiteManagement() {
     setError('');
 
     try {
+      // 处理 site ID，去掉可能的 'site_' 前缀
+      const siteIdForApi = stripIdPrefix(editingId, 'site_');
+      
       const payload = {
-        id: editingId,
+        id: siteIdForApi,  // 使用处理后的 ID
         name: editForm.name.trim(),
         latitude: parseFloat(editForm.latitude),
         longitude: parseFloat(editForm.longitude),
@@ -269,7 +299,7 @@ export default function SiteManagement() {
         assignedGuardIds: editForm.assignedGuardIds
       };
 
-      const res = await request(`${BASE_URL}/api/sites/${editingId}`, {
+      const res = await request(`${BASE_URL}/api/sites/${siteIdForApi}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
@@ -279,8 +309,33 @@ export default function SiteManagement() {
         throw new Error(errorText || '更新站点信息失败');
       }
 
-      const updated: SiteResponse = await res.json();
-      setSites(prev => prev.map(s => s.id === updated.id ? updated : s));
+      const updatedResponse = await res.json();
+      // 处理可能的响应格式差异
+      const updatedData = updatedResponse.data || updatedResponse;
+      
+      // 确保ID是字符串类型，避免startsWith错误
+      const updated: SiteResponse = {
+        ...updatedData,
+        id: String(updatedData.id),
+        assignedGuardIds: updatedData.assignedGuardIds?.map((id: any) => String(id)) || []
+      };
+      
+      console.log('[SITES] Update response:', updated);
+      console.log('[SITES] Current sites:', sites);
+      
+      // 更新列表中的站点信息
+      setSites(prev => {
+        const newSites = prev.map(s => {
+          // 比较时确保 ID 格式一致
+          if (s.id === editingId || s.id === updated.id) {
+            console.log('[SITES] Updating site in list:', s.id, '->', updated);
+            return updated;
+          }
+          return s;
+        });
+        console.log('[SITES] Updated sites list:', newSites);
+        return newSites;
+      });
       
       // Reset edit state
       setEditingId(null);
@@ -305,7 +360,10 @@ export default function SiteManagement() {
     setError('');
 
     try {
-      const res = await request(`${BASE_URL}/api/sites/${id}`, {
+      // 处理 site ID，去掉可能的 'site_' 前缀
+      const siteIdForApi = stripIdPrefix(id, 'site_');
+      
+      const res = await request(`${BASE_URL}/api/sites/${siteIdForApi}`, {
         method: 'DELETE'
       });
 

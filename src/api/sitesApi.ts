@@ -18,6 +18,16 @@ import type {
 } from '../types';
 
 /**
+ * Helper function to strip ID prefix
+ */
+const stripIdPrefix = (id: string, prefix: string): string => {
+  if (id && id.startsWith(prefix)) {
+    return id.replace(prefix, '');
+  }
+  return id;
+};
+
+/**
  * Sites API service object
  * Contains all methods for site management operations
  */
@@ -66,7 +76,8 @@ export const sitesApi = {
    */
   async getSite(siteId: string): Promise<ApiResponse<Site>> {
     try {
-      const response = await api.get<Site>(`/api/sites/${siteId}`);
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.get<Site>(`/api/sites/${siteIdForApi}`);
       
       console.log(`[SITES API] Retrieved site: ${siteId}`);
       return response.data;
@@ -99,7 +110,8 @@ export const sitesApi = {
    */
   async updateSite(siteId: string, siteData: Partial<SiteFormData>): Promise<ApiResponse<Site>> {
     try {
-      const response = await api.put<Site>(`/api/sites/${siteId}`, siteData);
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.put<Site>(`/api/sites/${siteIdForApi}`, siteData);
       
       if (response.data.success && response.data.data) {
         console.log(`[SITES API] Updated site: ${response.data.data.name}`);
@@ -117,7 +129,8 @@ export const sitesApi = {
    */
   async deleteSite(siteId: string): Promise<ApiResponse<null>> {
     try {
-      const response = await api.delete<null>(`/api/sites/${siteId}`);
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.delete<null>(`/api/sites/${siteIdForApi}`);
       
       console.log(`[SITES API] Deleted site: ${siteId}`);
       return response.data;
@@ -191,7 +204,8 @@ export const sitesApi = {
    */
   async getSiteSummary(siteId: string): Promise<ApiResponse<SiteSummary>> {
     try {
-      const response = await api.get<SiteSummary>(`/api/sites/${siteId}/summary`);
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.get<SiteSummary>(`/api/sites/${siteIdForApi}/summary`);
       
       console.log(`[SITES API] Retrieved summary for site: ${siteId}`);
       return response.data;
@@ -366,7 +380,7 @@ export const sitesApi = {
         failedCheckIns: number;
         averageCheckInsPerDay: number;
         peakHours: Array<{ hour: number; count: number }>;
-      }>(`/api/sites/${siteId}/checkin-stats`, dateRange);
+      }>(`/api/sites/${stripIdPrefix(siteId, 'site_')}/checkin-stats`, dateRange);
       
       console.log(`[SITES API] Retrieved check-in stats for site: ${siteId}`);
       return response.data;
@@ -384,7 +398,7 @@ export const sitesApi = {
     strictMode: boolean;
   }): Promise<ApiResponse<Site>> {
     try {
-      const response = await api.put<Site>(`/api/sites/${siteId}/geofence`, geofence);
+      const response = await api.put<Site>(`/api/sites/${stripIdPrefix(siteId, 'site_')}/geofence`, geofence);
       
       if (response.data.success) {
         console.log(`[SITES API] Updated geofence for site: ${siteId}`);

@@ -15,6 +15,11 @@ This is a React + TypeScript + Vite frontend application for a check-in manageme
 - **Lint code**: `npm run lint`
 - **Preview production build**: `npm run preview`
 
+### Testing and Quality Assurance
+- **End-to-End Tests**: Playwright tests available in `tests/` directory
+- **Type Checking**: TypeScript compilation occurs during build process
+- **Error Boundaries**: Global error handling via `APIErrorBoundary` component
+
 ### shadcn/ui Commands
 
 - **Add new components**: `npx shadcn@latest add [component-name]`
@@ -27,8 +32,12 @@ This is a React + TypeScript + Vite frontend application for a check-in manageme
 - **React 19** with TypeScript
 - **Vite** for build tooling and development server
 - **React Router Dom** for client-side routing
+- **React Query (TanStack Query v5)** for server state management
+- **Axios** for HTTP client with interceptors
 - **Tailwind CSS v4** for utility-first styling
 - **shadcn/ui** for modern, accessible UI components
+- **React Leaflet** for map visualization
+- **React Hook Form + Zod** for form validation
 - **PostCSS** for CSS processing (required for Tailwind v4)
 - **ESLint** for code linting
 
@@ -43,18 +52,40 @@ src/
 │   ├── manager.tsx      # Super admin page
 │   ├── login.tsx        # Login page (built with shadcn/ui)
 │   └── layout.tsx       # Admin layout wrapper
-├── components/      # shadcn/ui components
-│   └── ui/              # Generated shadcn/ui components
-│       ├── button.tsx       # Button component
-│       ├── card.tsx         # Card component
-│       ├── input.tsx        # Input component
-│       └── ...              # Other shadcn/ui components
+├── api/             # API layer architecture
+│   ├── client.ts        # Axios instance with interceptors
+│   ├── interceptors.ts  # Request/response interceptors
+│   ├── queryClient.ts   # React Query configuration
+│   ├── queryKeys.ts     # Query key factory functions
+│   ├── authApi.ts       # Authentication endpoints
+│   ├── guardsApi.ts     # Guards CRUD operations
+│   ├── sitesApi.ts      # Sites CRUD operations
+│   ├── checkinsApi.ts   # Check-ins and analytics
+│   └── index.ts         # Unified API exports
+├── hooks/           # React Query hooks
+│   ├── useAuth.ts       # Authentication hooks
+│   ├── useGuards.ts     # Guards data hooks
+│   ├── useSites.ts      # Sites data hooks
+│   ├── useCheckIns.ts   # Check-ins data hooks
+│   └── api/dashboard.ts # Dashboard analytics hooks
+├── components/      # UI components
+│   ├── ui/              # shadcn/ui components
+│   ├── APIErrorBoundary.tsx  # Global error handling
+│   ├── CheckinAnalytics.tsx  # Analytics widgets
+│   └── CheckinMapView.tsx    # Geographic visualization
+├── contexts/        # React contexts
+│   └── AuthContext.tsx  # Authentication state management
+├── types/           # TypeScript definitions
+│   ├── index.ts         # Core interfaces (Guard, Site, CheckInRecord)
+│   └── schemas.ts       # Validation schemas
 ├── lib/             # Utility libraries
-│   └── utils.ts         # Tailwind class utilities (cn function)
+│   ├── utils.ts         # Tailwind class utilities (cn function)
+│   └── react-query.ts   # React Query client setup
 ├── util/            # Application utilities
 │   ├── auth.ts          # Authentication helpers
 │   ├── config.ts        # Configuration (API base URL)
-│   └── request.ts       # HTTP request wrapper
+│   ├── request.ts       # HTTP request wrapper (legacy)
+│   └── logger.ts        # Logging utilities
 └── assets/          # Static assets
 ```
 
@@ -64,12 +95,30 @@ src/
 - Protected routes with automatic redirection to login on authentication failure
 - API requests automatically include Bearer token and handle 401 responses
 
-### API Integration
-- Base API URL configured in `src/util/config.ts` (currently `http://localhost:8080`)
-- Centralized request wrapper in `src/util/request.ts` handles:
-  - Authorization headers
-  - Token validation
-  - Automatic logout on 401 responses
+### API Architecture
+
+**Modern React Query + Axios Architecture**:
+- **API Client**: `src/api/client.ts` - Configured axios instance with interceptors
+- **Request/Response Interceptors**: `src/api/interceptors.ts` - Automatic auth headers, error handling, token refresh
+- **React Query Integration**: `src/api/queryClient.ts` - Global cache configuration and error handling
+- **Query Key Factory**: `src/api/queryKeys.ts` - Centralized query key management for cache invalidation
+
+**Service Layer Pattern**:
+- **authApi.ts**: Login, logout, token refresh, user management
+- **guardsApi.ts**: CRUD operations for security guards
+- **sitesApi.ts**: CRUD operations for security sites  
+- **checkinsApi.ts**: Check-in records, dashboard analytics, reporting
+
+**Custom Hooks Pattern**:
+- **useAuth**: Authentication state, login/logout operations
+- **useGuards**: Guards data with optimistic updates and cache management
+- **useSites**: Sites data with relationship invalidation
+- **useCheckIns**: Check-in records with real-time analytics
+
+**Data Relationships**:
+- **Guard ↔ Site**: One-to-one relationship (Guard.siteId → Site.id)
+- **CheckInRecord**: References both guardId and siteId with location validation
+- **Automatic Cache Invalidation**: Related data updates automatically invalidate dependent queries
 
 ### Routing Structure
 - `/login` - Login page (public)
@@ -230,6 +279,54 @@ export default {
     </TableRow>
   </TableBody>
 </Table>
+```
+
+## Critical Business Logic
+
+### Guard-Site Relationship
+- **One-to-One Constraint**: Each guard can only be assigned to ONE site (Guard.siteId)
+- **Site Assignment**: Sites can have multiple guards (Site.assignedGuardIds array)
+- **EmployeeId Auto-Generation**: Backend automatically generates employeeId - never manually input
+
+### Check-In Validation Rules
+- **Location Validation**: Check-ins must be within `Site.allowedRadiusMeters` of the site coordinates
+- **Face Recognition**: All check-ins require face image verification (`faceImageUrl`)
+- **Status Types**: `'success' | 'failed' | 'pending'` based on validation results
+
+### API Response Patterns
+```typescript
+// Standard API Response Format
+interface ApiResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination?: PaginationResponse;
+  message?: string;
+  statistics?: CheckInStatistics;
+}
+
+// Paginated responses include statistics for current filter
+interface CheckInStatistics {
+  totalRecords: number;
+  successCount: number;
+  failedCount: number;
+  successRate: number;
+}
+```
+
+### React Query Patterns
+```typescript
+// Use custom hooks for all data operations
+const { data: guards, isLoading } = useGuards({ siteId: selectedSiteId });
+const createGuard = useCreateGuard();
+
+// Mutations with optimistic updates and cache invalidation
+const updateGuard = useUpdateGuard();
+updateGuard.mutate({ guardId, updates: { name: 'New Name' } });
+
+// Query keys follow hierarchical pattern
+queryKeys.guards.lists() // All guard lists
+queryKeys.guards.detail(guardId) // Specific guard
+queryKeys.guards.bySite(siteId) // Guards for a site
 ```
 
 ## Task Master AI Instructions

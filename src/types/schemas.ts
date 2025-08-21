@@ -108,7 +108,6 @@ export const LoginSchema = z.object({
     .min(1, '请输入密码')
     .min(6, '密码至少需要6个字符')
     .max(100, '密码不能超过100个字符'),
-  rememberMe: z.boolean().default(false),
 });
 
 /**

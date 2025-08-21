@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, AlertCircle } from "lucide-react";
 
 // Define the form data type from the schema
@@ -25,41 +24,18 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors, isValid },
     setFocus,
-    setValue,
     watch,
-    control,
   } = useForm<LoginFormData>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
       username: "",
       password: "",
-      rememberMe: false,
     },
     mode: "onChange", // Validate on change for better UX
   });
 
   // Watch form values for debugging
   const watchedValues = watch();
-  
-  // Load saved user data if "remember me" was checked
-  useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      if (savedUser) {
-        const userData = JSON.parse(savedUser);
-        console.log("Loaded saved user data:", userData);
-        if (userData.rememberMe && userData.username) {
-          setValue("username", userData.username);
-          setValue("rememberMe", true);
-          console.log("Applied saved username:", userData.username);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading saved user data:", error);
-      // Clear invalid data
-      localStorage.removeItem("user");
-    }
-  }, [setValue]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -152,32 +128,6 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Remember Me Checkbox */}
-              <div className="flex items-center space-x-2">
-                <Controller
-                  name="rememberMe"
-                  control={control}
-                  render={({ field: { onChange, value, ref, ...fieldProps } }) => (
-                    <Checkbox
-                      {...fieldProps}
-                      id="rememberMe"
-                      ref={ref}
-                      checked={!!value}
-                      onCheckedChange={(checked) => {
-                        onChange(checked === true);
-                        console.log(`[CHECKBOX DEBUG] Checkbox changed to: ${checked}, typeof: ${typeof checked}`);
-                      }}
-                      disabled={isLoading}
-                    />
-                  )}
-                />
-                <Label 
-                  htmlFor="rememberMe" 
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  记住用户名
-                </Label>
-              </div>
             </CardContent>
             
             <CardFooter className="pt-6">
@@ -207,8 +157,7 @@ export default function LoginPage() {
             <div className="text-xs text-muted-foreground mt-2">
               <p>用户名最少3个字符，密码最少6个字符</p>
               <p className="mt-1">
-                Debug: RememberMe = {watchedValues.rememberMe ? '✅' : '❌'} | 
-                Username = "{watchedValues.username}"
+                Debug: Username = "{watchedValues.username}"
               </p>
             </div>
           )}

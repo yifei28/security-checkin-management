@@ -58,6 +58,22 @@ export interface ApiResponse<T> {
 }
 
 /**
+ * Guard role enum values
+ */
+export enum GuardRole {
+  TEAM_MEMBER = 'TEAM_MEMBER',
+  TEAM_LEADER = 'TEAM_LEADER'
+}
+
+/**
+ * Guard role display names mapping
+ */
+export const GuardRoleDisplayNames = {
+  [GuardRole.TEAM_MEMBER]: '队员',
+  [GuardRole.TEAM_LEADER]: '队长'
+} as const;
+
+/**
  * Guard interface represents a security guard in the system
  */
 export interface Guard {
@@ -73,8 +89,11 @@ export interface Guard {
   /** URL to the guard's profile photo */
   photoUrl: string;
   
-  /** Array of site IDs where this guard is assigned */
-  assignedSiteIds: string[];
+  /** Site ID where this guard is assigned (only one site allowed) */
+  siteId: string | null;
+  
+  /** Guard role: TEAM_MEMBER or TEAM_LEADER */
+  role: GuardRole;
 }
 
 /**
@@ -317,9 +336,6 @@ export interface LoginRequest {
   
   /** Password for authentication */
   password: string;
-  
-  /** Optional remember me flag */
-  rememberMe?: boolean;
 }
 
 /**
@@ -474,7 +490,8 @@ export interface GuardFormData {
   name: string;
   phoneNumber: string;
   photoUrl?: string;
-  assignedSiteIds: string[];
+  siteId: string | null;
+  role?: GuardRole; // Optional, defaults to TEAM_MEMBER
 }
 
 export interface SiteFormData {
@@ -489,7 +506,7 @@ export interface SiteFormData {
  */
 export interface GuardAssignmentRequest {
   guardId: string;
-  siteIds: string[];
+  siteId: string | null;
 }
 
 export interface SiteAssignmentRequest {
@@ -613,12 +630,14 @@ export function isGuard(value: unknown): value is Guard {
     'name' in value &&
     'phoneNumber' in value &&
     'photoUrl' in value &&
-    'assignedSiteIds' in value &&
+    'siteId' in value &&
+    'role' in value &&
     typeof (value as any).id === 'string' &&
     typeof (value as any).name === 'string' &&
     typeof (value as any).phoneNumber === 'string' &&
     typeof (value as any).photoUrl === 'string' &&
-    Array.isArray((value as any).assignedSiteIds)
+    ((value as any).siteId === null || typeof (value as any).siteId === 'string') &&
+    Object.values(GuardRole).includes((value as any).role)
   );
 }
 

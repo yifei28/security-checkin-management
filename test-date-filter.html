@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日期筛选测试</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .result {
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <h1>签到记录日期筛选测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 时间格式化测试</h2>
+        <button onclick="testTimeFormatting()">运行测试</button>
+        <div id="time-format-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. API时间戳解析测试</h2>
+        <button onclick="testTimeParsing()">运行测试</button>
+        <div id="time-parse-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 日期范围计算测试</h2>
+        <button onclick="testDateRange()">运行测试</button>
+        <div id="date-range-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 模拟API请求测试</h2>
+        <button onclick="testAPICall()">运行测试</button>
+        <div id="api-test-result"></div>
+    </div>
+
+    <script>
+        // Helper function to format date as local time string
+        const formatLocalDateTime = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        };
+
+        // Parse API timestamp as Beijing time
+        const parseBeijingTime = (timestamp) => {
+            return new Date(timestamp);
+        };
+
+        function testTimeFormatting() {
+            const resultDiv = document.getElementById('time-format-result');
+            let html = '';
+            
+            const now = new Date();
+            html += `<div class="code">当前时间: ${now.toString()}</div>`;
+            
+            const formatted = formatLocalDateTime(now);
+            html += `<div class="code">格式化后: ${formatted}</div>`;
+            
+            // Test today's range
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            const todayStart = formatLocalDateTime(today);
+            
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+            const todayEndStr = formatLocalDateTime(todayEnd);
+            
+            html += `<div class="result">今天的时间范围:<br>开始: ${todayStart}<br>结束: ${todayEndStr}</div>`;
+            
+            resultDiv.innerHTML = html;
+        }
+
+        function testTimeParsing() {
+            const resultDiv = document.getElementById('time-parse-result');
+            let html = '';
+            
+            // Test parsing timestamps without Z suffix
+            const testTimestamps = [
+                '2025-01-15T14:30:00',
+                '2025-01-15T00:00:00',
+                '2025-01-15T23:59:59'
+            ];
+            
+            html += '<h3>解析测试:</h3>';
+            testTimestamps.forEach(ts => {
+                const parsed = parseBeijingTime(ts);
+                html += `<div class="code">
+                    输入: ${ts}<br>
+                    解析结果: ${parsed.toString()}<br>
+                    本地显示: ${parsed.toLocaleString('zh-CN')}
+                </div>`;
+            });
+            
+            resultDiv.innerHTML = html;
+        }
+
+        function testDateRange() {
+            const resultDiv = document.getElementById('date-range-result');
+            let html = '';
+            
+            const now = new Date();
+            
+            // Today
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+            
+            html += `<div class="result">
+                <strong>今天:</strong><br>
+                开始: ${formatLocalDateTime(todayStart)}<br>
+                结束: ${formatLocalDateTime(todayEnd)}
+            </div>`;
+            
+            // Week
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            weekAgo.setHours(0, 0, 0, 0);
+            
+            html += `<div class="result">
+                <strong>本周(最近7天):</strong><br>
+                开始: ${formatLocalDateTime(weekAgo)}<br>
+                结束: ${formatLocalDateTime(now)}
+            </div>`;
+            
+            // Month
+            const monthAgo = new Date(now);
+            monthAgo.setDate(monthAgo.getDate() - 30);
+            monthAgo.setHours(0, 0, 0, 0);
+            
+            html += `<div class="result">
+                <strong>本月(最近30天):</strong><br>
+                开始: ${formatLocalDateTime(monthAgo)}<br>
+                结束: ${formatLocalDateTime(now)}
+            </div>`;
+            
+            resultDiv.innerHTML = html;
+        }
+
+        async function testAPICall() {
+            const resultDiv = document.getElementById('api-test-result');
+            let html = '';
+            
+            // Simulate API call with date parameters
+            const now = new Date();
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setHours(23, 59, 59, 999);
+            
+            const params = new URLSearchParams({
+                page: '1',
+                pageSize: '20',
+                sortBy: 'timestamp',
+                sortOrder: 'desc',
+                startDate: formatLocalDateTime(today),
+                endDate: formatLocalDateTime(todayEnd)
+            });
+            
+            const apiUrl = `http://localhost:8080/api/checkin?${params}`;
+            
+            html += '<h3>模拟API请求:</h3>';
+            html += `<div class="code">URL: ${apiUrl}</div>`;
+            html += '<h3>查询参数:</h3>';
+            html += '<div class="code">';
+            for (const [key, value] of params) {
+                html += `${key}: ${value}<br>`;
+            }
+            html += '</div>';
+            
+            // Check if dates would filter correctly
+            const testRecords = [
+                { timestamp: '2025-01-15T10:30:00', shouldInclude: true },
+                { timestamp: '2025-01-15T00:00:00', shouldInclude: true },
+                { timestamp: '2025-01-15T23:59:59', shouldInclude: true },
+                { timestamp: '2025-01-14T23:59:59', shouldInclude: false },
+                { timestamp: '2025-01-16T00:00:00', shouldInclude: false }
+            ];
+            
+            html += '<h3>筛选测试（假设今天是2025-01-15）:</h3>';
+            const startDate = parseBeijingTime(formatLocalDateTime(today));
+            const endDate = parseBeijingTime(formatLocalDateTime(todayEnd));
+            
+            testRecords.forEach(record => {
+                const recordDate = parseBeijingTime(record.timestamp);
+                const included = recordDate >= startDate && recordDate <= endDate;
+                const correct = included === record.shouldInclude;
+                
+                html += `<div class="${correct ? 'result' : 'result error'}">
+                    时间: ${record.timestamp}<br>
+                    应该包含: ${record.shouldInclude ? '是' : '否'}<br>
+                    实际结果: ${included ? '包含' : '排除'}<br>
+                    测试结果: ${correct ? '✅ 正确' : '❌ 错误'}
+                </div>`;
+            });
+            
+            resultDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -11,7 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Users, Edit, Trash2, Phone, IdCard, MapPin, AlertCircle } from 'lucide-react';
+import { Plus, Search, Users, Edit, Trash2, Phone, IdCard, MapPin, AlertCircle, Crown, User } from 'lucide-react';
+import { GuardRole, GuardRoleDisplayNames } from '@/types/index';
 // import { cn } from "@/lib/utils";
 
 // Backend API interfaces (matching what the actual API expects)
@@ -21,6 +22,7 @@ interface GuardResponse {
   phoneNumber: string // Back to phoneNumber - this is what backend actually returns
   employeeId: string
   site: { id: string; name: string } | null
+  role: GuardRole // 新增角色字段
   active?: boolean
   isActive?: boolean // Backend returns both active and isActive
   createdAt?: string
@@ -41,13 +43,32 @@ interface SiteResponse {
 interface GuardFormData {
   name: string
   phoneNumber: string // Changed back to match API field name
-  employeeId?: string
   siteId: string
+  role: GuardRole // 新增角色字段
 }
 
 // interface GuardUpdateData extends GuardFormData {
 //   id: number
 // }
+
+// 辅助函数：去掉 ID 前缀，返回纯数字或原始字符串
+const stripIdPrefix = (id: string | number, prefix: string): string => {
+  const idStr = String(id);
+  if (idStr && idStr.startsWith(prefix)) {
+    return idStr.replace(prefix, '');
+  }
+  return idStr;
+};
+
+// 辅助函数：将带前缀的 ID 转换为数字
+const extractNumberFromId = (id: string | number, prefix: string): number | null => {
+  if (id === null || id === undefined) return null;
+  const idStr = String(id).trim();
+  if (idStr === '') return null;
+  const stripped = stripIdPrefix(idStr, prefix);
+  const num = Number(stripped);
+  return isNaN(num) ? null : num;
+};
 
 export default function GuardManagement() {
   const [guards, setGuards] = useState<GuardResponse[]>([])
@@ -60,8 +81,8 @@ export default function GuardManagement() {
   const [addForm, setAddForm] = useState<GuardFormData>({
     name: '',
     phoneNumber: '',
-    employeeId: '',
-    siteId: ''
+    siteId: '',
+    role: GuardRole.TEAM_MEMBER // 默认为队员
   })
 
   // Edit form state
@@ -69,24 +90,24 @@ export default function GuardManagement() {
   const [editForm, setEditForm] = useState<GuardFormData>({
     name: '',
     phoneNumber: '',
-    employeeId: '',
-    siteId: ''
+    siteId: '',
+    role: GuardRole.TEAM_MEMBER
   })
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError('');
-      
-      try {
-        const [guardsRes, sitesRes] = await Promise.all([
-          request(`${BASE_URL}/api/guards`),
-          request(`${BASE_URL}/api/sites`)
-        ]);
+  // 封装数据获取逻辑
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const [guardsRes, sitesRes] = await Promise.all([
+        request(`${BASE_URL}/api/guards`),
+        request(`${BASE_URL}/api/sites`)
+      ]);
         
         if (!guardsRes.ok) {
           throw new Error(`获取保安数据失败: ${guardsRes.status}`);
@@ -102,6 +123,9 @@ export default function GuardManagement() {
         const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
         const sitesData = sitesResponse.success && sitesResponse.data ? sitesResponse.data : [];
         
+        console.log('[GUARDS] Fetched sites:', sitesData);
+        console.log('[GUARDS] First site example:', sitesData[0]);
+        
         setGuards(Array.isArray(guardsData) ? guardsData : []);
         setSites(Array.isArray(sitesData) ? sitesData : []);
       } catch (error: unknown) {
@@ -115,6 +139,7 @@ export default function GuardManagement() {
       }
     };
 
+  useEffect(() => {
     fetchData();
   }, [])
 
@@ -148,12 +173,20 @@ export default function GuardManagement() {
     setError('');
 
     try {
+      console.log('[GUARDS] Form state before submit:', addForm);
+      console.log('[GUARDS] Site ID value:', addForm.siteId, 'Type:', typeof addForm.siteId, 'Length:', addForm.siteId.length);
+      
+      // site.id 必须是数字类型，使用辅助函数处理
+      const siteIdNumber = extractNumberFromId(addForm.siteId, 'site_');
+      
       const payload = {
         name: addForm.name.trim(),
         phoneNumber: addForm.phoneNumber.trim(),
-        employeeId: addForm.employeeId?.trim() || `EMP${Date.now()}`, // Generate if empty
-        site: { id: Number(addForm.siteId) }
+        site: siteIdNumber !== null ? { id: siteIdNumber } : null,
+        role: addForm.role // 包含角色字段
       };
+
+      console.log('[GUARDS] Final payload:', payload);
 
       const res = await request(`${BASE_URL}/api/guards`, {
         method: 'POST',
@@ -165,12 +198,35 @@ export default function GuardManagement() {
         throw new Error(errorText || '添加保安失败');
       }
 
-      const newGuard: GuardResponse = await res.json();
-      setGuards(prev => [...prev, newGuard]);
+      const newGuardResponse = await res.json();
+      // 处理可能的响应格式差异
+      const newGuardData = newGuardResponse.data || newGuardResponse;
+      
+      // 确保ID是字符串类型，避免startsWith错误
+      const newGuard: GuardResponse = {
+        ...newGuardData,
+        id: String(newGuardData.id),
+        site: newGuardData.site ? {
+          ...newGuardData.site,
+          id: String(newGuardData.site.id)
+        } : null
+      };
+      
+      console.log('[GUARDS] Add response:', newGuard);
+      
+      // 添加新保安到列表
+      setGuards(prev => {
+        const updatedList = [...prev, newGuard];
+        console.log('[GUARDS] Updated guards list after add:', updatedList);
+        return updatedList;
+      });
       
       // Reset form
-      setAddForm({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+      setAddForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
       setIsAddDialogOpen(false);
+      
+      // 可选：重新获取数据以确保同步
+      // await fetchData();
     } catch (error: unknown) {
       console.error('[GUARDS] Add error:', error);
       setError(error instanceof Error ? error.message : '添加保安失败');
@@ -184,8 +240,8 @@ export default function GuardManagement() {
     setEditForm({
       name: guard.name,
       phoneNumber: guard.phoneNumber,
-      employeeId: guard.employeeId,
-      siteId: guard.site?.id?.toString() ?? ''
+      siteId: guard.site?.id?.toString() ?? '',
+      role: guard.role || GuardRole.TEAM_MEMBER // 确保有默认值
     });
     setError(''); // Clear any existing errors
     setIsEditDialogOpen(true);
@@ -207,15 +263,19 @@ export default function GuardManagement() {
     setError('');
 
     try {
+      // 使用辅助函数处理 ID
+      const siteIdNumber = extractNumberFromId(editForm.siteId, 'site_');
+      const guardIdForApi = stripIdPrefix(editingId, 'guard_');
+      
       const payload = {
-        id: editingId,
+        id: guardIdForApi,  // 使用处理后的 ID
         name: editForm.name.trim(),
-        employeeId: editForm.employeeId?.trim() || `EMP${Date.now()}`,
         phoneNumber: editForm.phoneNumber.trim(),
-        site: { id: Number(editForm.siteId) }
+        site: siteIdNumber !== null ? { id: siteIdNumber } : null,
+        role: editForm.role // 包含角色字段
       };
 
-      const res = await request(`${BASE_URL}/api/guards/${editingId}`, {
+      const res = await request(`${BASE_URL}/api/guards/${guardIdForApi}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
@@ -225,12 +285,40 @@ export default function GuardManagement() {
         throw new Error(errorText || '更新保安信息失败');
       }
 
-      const updated: GuardResponse = await res.json();
-      setGuards(prev => prev.map(g => g.id === updated.id ? updated : g));
+      const updatedResponse = await res.json();
+      // 处理可能的响应格式差异
+      const updatedData = updatedResponse.data || updatedResponse;
+      
+      // 确保ID是字符串类型，避免startsWith错误
+      const updated: GuardResponse = {
+        ...updatedData,
+        id: String(updatedData.id),
+        site: updatedData.site ? {
+          ...updatedData.site,
+          id: String(updatedData.site.id)
+        } : null
+      };
+      
+      console.log('[GUARDS] Update response:', updated);
+      console.log('[GUARDS] Current guards:', guards);
+      
+      // 更新列表中的保安信息
+      setGuards(prev => {
+        const newGuards = prev.map(g => {
+          // 比较时确保 ID 格式一致
+          if (g.id === editingId || g.id === updated.id) {
+            console.log('[GUARDS] Updating guard in list:', g.id, '->', updated);
+            return updated;
+          }
+          return g;
+        });
+        console.log('[GUARDS] Updated guards list:', newGuards);
+        return newGuards;
+      });
       
       // Reset edit state
       setEditingId(null);
-      setEditForm({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+      setEditForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
       setIsEditDialogOpen(false);
     } catch (error: unknown) {
       console.error('[GUARDS] Update error:', error);
@@ -251,7 +339,10 @@ export default function GuardManagement() {
     setError('');
 
     try {
-      const res = await request(`${BASE_URL}/api/guards/${id}`, {
+      // 使用辅助函数处理 guard ID
+      const guardIdForApi = stripIdPrefix(id, 'guard_');
+      
+      const res = await request(`${BASE_URL}/api/guards/${guardIdForApi}`, {
         method: 'DELETE'
       });
 
@@ -273,20 +364,20 @@ export default function GuardManagement() {
     return (
       guard.name.toLowerCase().includes(searchLower) ||
       guard.phoneNumber.includes(searchQuery) ||
-      guard.employeeId.toLowerCase().includes(searchLower) ||
+      (guard.employeeId && guard.employeeId.toLowerCase().includes(searchLower)) ||
       guard.site?.name.toLowerCase().includes(searchLower)
     );
   });
 
   // Helper function to reset add form
   const resetAddForm = () => {
-    setAddForm({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+    setAddForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
     setError('');
   };
 
   // Helper function to reset edit form
   const resetEditForm = () => {
-    setEditForm({ name: '', phoneNumber: '', employeeId: '', siteId: '' });
+    setEditForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
     setEditingId(null);
     setError('');
   };
@@ -348,34 +439,62 @@ export default function GuardManagement() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">工号</label>
-                <Input
-                  placeholder="选填，留空将自动生成"
-                  value={addForm.employeeId}
-                  onChange={(e) => setAddForm(prev => ({ ...prev, employeeId: e.target.value }))}
+                <label className="text-sm font-medium">角色 *</label>
+                <Select 
+                  value={addForm.role} 
+                  onValueChange={(value) => setAddForm(prev => ({ ...prev, role: value as GuardRole }))}
                   disabled={isSubmitting}
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择角色" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={GuardRole.TEAM_MEMBER}>
+                      <div className="flex items-center space-x-2">
+                        <User className="h-3 w-3 text-blue-500" />
+                        <span>{GuardRoleDisplayNames[GuardRole.TEAM_MEMBER]}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value={GuardRole.TEAM_LEADER}>
+                      <div className="flex items-center space-x-2">
+                        <Crown className="h-3 w-3 text-amber-500" />
+                        <span>{GuardRoleDisplayNames[GuardRole.TEAM_LEADER]}</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">所属站点 *</label>
                 <Select 
                   value={addForm.siteId} 
-                  onValueChange={(value) => setAddForm(prev => ({ ...prev, siteId: value }))}
+                  onValueChange={(value) => {
+                    console.log('[GUARDS] Select onValueChange triggered');
+                    console.log('[GUARDS] Selected value:', value, 'Type:', typeof value);
+                    console.log('[GUARDS] Previous form state:', addForm);
+                    const newForm = { ...addForm, siteId: value };
+                    console.log('[GUARDS] New form state:', newForm);
+                    setAddForm(newForm);
+                  }}
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="请选择所属站点" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sites.map((site) => (
-                      <SelectItem key={site.id} value={site.id}>
-                        <div className="flex items-center space-x-2">
-                          <MapPin className="h-3 w-3" />
-                          <span>{site.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {sites.map((site) => {
+                      console.log('[GUARDS] Rendering site option:', site);
+                      const siteIdStr = site.id ? site.id.toString() : '';
+                      return (
+                        <SelectItem key={site.id} value={siteIdStr}>
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="h-3 w-3" />
+                            <span>{site.name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -500,6 +619,7 @@ export default function GuardManagement() {
                   <TableHead>保安信息</TableHead>
                   <TableHead>联系方式</TableHead>
                   <TableHead>工号</TableHead>
+                  <TableHead>角色</TableHead>
                   <TableHead>所属站点</TableHead>
                   <TableHead className="w-32">操作</TableHead>
                 </TableRow>
@@ -536,6 +656,21 @@ export default function GuardManagement() {
                       <div className="flex items-center space-x-1 text-sm">
                         <IdCard className="h-3 w-3 text-muted-foreground" />
                         <span className="font-mono">{guard.employeeId}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        {guard.role === GuardRole.TEAM_LEADER ? (
+                          <Crown className="h-3 w-3 text-amber-500" />
+                        ) : (
+                          <User className="h-3 w-3 text-blue-500" />
+                        )}
+                        <Badge
+                          variant={guard.role === GuardRole.TEAM_LEADER ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {GuardRoleDisplayNames[guard.role] || '队员'}
+                        </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -618,13 +753,30 @@ export default function GuardManagement() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium">工号</label>
-              <Input
-                placeholder="工号不可为空"
-                value={editForm.employeeId}
-                onChange={(e) => setEditForm(prev => ({ ...prev, employeeId: e.target.value }))}
+              <label className="text-sm font-medium">角色 *</label>
+              <Select 
+                value={editForm.role} 
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, role: value as GuardRole }))}
                 disabled={isSubmitting}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择角色" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GuardRole.TEAM_MEMBER}>
+                    <div className="flex items-center space-x-2">
+                      <User className="h-3 w-3 text-blue-500" />
+                      <span>{GuardRoleDisplayNames[GuardRole.TEAM_MEMBER]}</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={GuardRole.TEAM_LEADER}>
+                    <div className="flex items-center space-x-2">
+                      <Crown className="h-3 w-3 text-amber-500" />
+                      <span>{GuardRoleDisplayNames[GuardRole.TEAM_LEADER]}</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -639,7 +791,7 @@ export default function GuardManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   {sites.map((site) => (
-                    <SelectItem key={site.id} value={site.id}>
+                    <SelectItem key={site.id} value={site.id.toString()}>
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-3 w-3" />
                         <span>{site.name}</span>

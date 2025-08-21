@@ -1,0 +1,87 @@
+# Page snapshot
+
+```yaml
+- complementary:
+  - heading "安全巡检管理系统" [level=2]
+  - paragraph: 管理后台
+  - paragraph: 欢迎，yifei
+  - navigation:
+    - link "首页":
+      - /url: /admin
+      - button "首页"
+    - link "保安管理":
+      - /url: /admin/guards
+      - button "保安管理"
+    - link "单位管理":
+      - /url: /admin/sites
+      - button "单位管理"
+    - link "签到记录":
+      - /url: /admin/checkins
+      - button "签到记录"
+  - button "退出登录"
+- main:
+  - heading "保安管理" [level=1]
+  - paragraph: 管理保安信息和分配 · 共 6 位保安
+  - button "添加保安"
+  - textbox "搜索保安姓名、手机号、工号或站点..."
+  - text: 6 个结果 保安列表 当前系统中所有保安的详细信息和状态
+  - table:
+    - rowgroup:
+      - row "保安信息 联系方式 工号 所属站点 操作":
+        - cell "保安信息"
+        - cell "联系方式"
+        - cell "工号"
+        - cell "所属站点"
+        - cell "操作"
+    - rowgroup:
+      - row "编辑后的姓名 活跃 13800138003 20250809-0000017-tiKUHu 办公大楼A座":
+        - cell "编辑后的姓名 活跃"
+        - cell "13800138003"
+        - cell "20250809-0000017-tiKUHu"
+        - cell "办公大楼A座"
+        - cell:
+          - button
+          - button
+      - row "李四 活跃 13800138002 20250809-0000018-ao750V 办公大楼A座":
+        - cell "李四 活跃"
+        - cell "13800138002"
+        - cell "20250809-0000018-ao750V"
+        - cell "办公大楼A座"
+        - cell:
+          - button
+          - button
+      - row "王五 活跃 13800138003 20250809-0000019-zwdHaN 办公大楼B座":
+        - cell "王五 活跃"
+        - cell "13800138003"
+        - cell "20250809-0000019-zwdHaN"
+        - cell "办公大楼B座"
+        - cell:
+          - button
+          - button
+      - row "李易非 活跃 15711202091 20250815-0000024-rfNWHD 办公大楼A座":
+        - cell "李易非 活跃"
+        - cell "15711202091"
+        - cell "20250815-0000024-rfNWHD"
+        - cell "办公大楼A座"
+        - cell:
+          - button
+          - button
+      - row "测试保安员张三 活跃 13812345678 20250815-0000025-K1MaQ5 办公大楼A座":
+        - cell "测试保安员张三 活跃"
+        - cell "13812345678"
+        - cell "20250815-0000025-K1MaQ5"
+        - cell "办公大楼A座"
+        - cell:
+          - button
+          - button
+      - row "测试保安员张三 活跃 13812345678 20250815-0000026-mtwJRe 办公大楼A座":
+        - cell "测试保安员张三 活跃"
+        - cell "13812345678"
+        - cell "20250815-0000026-mtwJRe"
+        - cell "办公大楼A座"
+        - cell:
+          - button
+          - button
+- button "Open Tanstack query devtools":
+  - img
+```

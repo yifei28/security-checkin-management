@@ -120,11 +120,9 @@ export const useCreateGuard = () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.guards.lists() });
         queryClient.invalidateQueries({ queryKey: queryKeys.guards.summaries() });
         
-        // Invalidate site-related queries if guard is assigned to sites
-        if (newGuard.assignedSiteIds.length > 0) {
-          newGuard.assignedSiteIds.forEach(siteId => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.guards.bySite(siteId) });
-          });
+        // Invalidate site-related queries if guard is assigned to a site
+        if (newGuard.siteId) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.guards.bySite(newGuard.siteId) });
         }
         
         console.log('[GUARDS HOOK] Guard created:', newGuard.name);
@@ -254,30 +252,30 @@ export const useUploadGuardPhoto = () => {
 };
 
 /**
- * Hook for assigning guard to sites
+ * Hook for assigning guard to a site
  */
-export const useAssignGuardToSites = () => {
+export const useAssignGuardToSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ guardId, siteIds }: { guardId: string; siteIds: string[] }): Promise<ApiResponse<Guard>> =>
-      guardsApi.assignGuardToSites(guardId, siteIds),
+    mutationFn: ({ guardId, siteId }: { guardId: string; siteId: string | null }): Promise<ApiResponse<Guard>> =>
+      guardsApi.assignGuardToSite(guardId, siteId),
     
-    onSuccess: (data, { guardId, siteIds }) => {
+    onSuccess: (data, { guardId, siteId }) => {
       if (data.success) {
         // Update guard details
         queryClient.invalidateQueries({ queryKey: queryKeys.guards.detail(guardId) });
         
         // Invalidate site-related queries
-        siteIds.forEach(siteId => {
+        if (siteId) {
           queryClient.invalidateQueries({ queryKey: queryKeys.guards.bySite(siteId) });
-        });
+        }
         
         // Invalidate lists and summaries
         queryClient.invalidateQueries({ queryKey: queryKeys.guards.lists() });
         queryClient.invalidateQueries({ queryKey: queryKeys.guards.summaries() });
         
-        console.log('[GUARDS HOOK] Guard assigned to sites:', guardId);
+        console.log('[GUARDS HOOK] Guard assigned to site:', guardId);
       }
     },
   });

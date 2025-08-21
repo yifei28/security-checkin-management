@@ -62,19 +62,8 @@ export function logout(): void {
   localStorage.removeItem(STORAGE_KEYS.SUPER_ADMIN);
   localStorage.removeItem(STORAGE_KEYS.USER);
   
-  // Clear any remember me data if needed
-  try {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      if (!userData.rememberMe) {
-        localStorage.removeItem('user');
-      }
-    }
-  } catch {
-    // If there's an error parsing, just remove it
-    localStorage.removeItem('user');
-  }
+  // Clear any saved user data
+  localStorage.removeItem('user');
   
   console.log('[AUTH] Authentication data cleared');
 }

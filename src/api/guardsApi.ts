@@ -170,7 +170,9 @@ export const guardsApi = {
    */
   async getGuardsBySite(siteId: string): Promise<ApiResponse<Guard[]>> {
     try {
-      const response = await api.get<Guard[]>(`/api/sites/${siteId}/guards`);
+      // 处理 site ID 前缀
+      const siteIdForApi = siteId.startsWith('site_') ? siteId.replace('site_', '') : siteId;
+      const response = await api.get<Guard[]>(`/api/sites/${siteIdForApi}/guards`);
       
       console.log(`[GUARDS API] Retrieved guards for site: ${siteId}`);
       return response.data;
@@ -181,45 +183,44 @@ export const guardsApi = {
   },
 
   /**
-   * Assign a guard to sites
+   * Assign a guard to a site
    */
-  async assignGuardToSites(guardId: string, siteIds: string[]): Promise<ApiResponse<Guard>> {
+  async assignGuardToSite(guardId: string, siteId: string | null): Promise<ApiResponse<Guard>> {
     try {
       const assignmentData: GuardAssignmentRequest = {
         guardId,
-        siteIds,
+        siteId,
       };
       
       const response = await api.post<Guard>('/api/guards/assign', assignmentData);
       
       if (response.data.success) {
-        console.log(`[GUARDS API] Assigned guard ${guardId} to ${siteIds.length} sites`);
+        console.log(`[GUARDS API] Assigned guard ${guardId} to site ${siteId}`);
       }
       
       return response.data;
     } catch (error) {
-      console.error(`[GUARDS API] Failed to assign guard ${guardId} to sites:`, error);
+      console.error(`[GUARDS API] Failed to assign guard ${guardId} to site:`, error);
       throw error;
     }
   },
 
   /**
-   * Remove guard from sites
+   * Remove guard from site
    */
-  async unassignGuardFromSites(guardId: string, siteIds: string[]): Promise<ApiResponse<Guard>> {
+  async unassignGuardFromSite(guardId: string): Promise<ApiResponse<Guard>> {
     try {
       const response = await api.post<Guard>('/api/guards/unassign', {
         guardId,
-        siteIds,
       });
       
       if (response.data.success) {
-        console.log(`[GUARDS API] Unassigned guard ${guardId} from ${siteIds.length} sites`);
+        console.log(`[GUARDS API] Unassigned guard ${guardId} from site`);
       }
       
       return response.data;
     } catch (error) {
-      console.error(`[GUARDS API] Failed to unassign guard ${guardId} from sites:`, error);
+      console.error(`[GUARDS API] Failed to unassign guard ${guardId} from site:`, error);
       throw error;
     }
   },
@@ -373,8 +374,8 @@ export const {
   uploadGuardPhoto,
   deleteGuardPhoto,
   getGuardsBySite,
-  assignGuardToSites,
-  unassignGuardFromSites,
+  assignGuardToSite,
+  unassignGuardFromSite,
   getGuardSummary,
   getAllGuardsSummary,
   bulkUpdateGuards,

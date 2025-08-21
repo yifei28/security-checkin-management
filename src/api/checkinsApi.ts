@@ -145,7 +145,9 @@ export const checkinsApi = {
         params.endDate = dateRange.endDate;
       }
 
-      const response = await api.get<CheckInRecord[]>(`/api/sites/${siteId}/checkins`, {
+      // 处理 site ID 前缀
+      const siteIdForApi = siteId.startsWith('site_') ? siteId.replace('site_', '') : siteId;
+      const response = await api.get<CheckInRecord[]>(`/api/sites/${siteIdForApi}/checkins`, {
         params
       });
       
