@@ -10,7 +10,7 @@ import AdminLayout from './admin/layout'
 import ManagerPage from './admin/manager'
 import { useAuth, AuthProvider } from './contexts/AuthContext'
 import { APIErrorBoundary } from './components/APIErrorBoundary'
-import { ErrorBoundaryTest } from './components/ErrorBoundaryTest'
+// import { ErrorBoundaryTest } from './components/ErrorBoundaryTest'
 import { queryClient } from './lib/react-query'
 import DateFilterDebug from './components/DateFilterDebug'
 
@@ -58,11 +58,12 @@ function App() {
                   <Route index element={
                     <APIErrorBoundary>
                       <AdminDashboard />
-                      {process.env.NODE_ENV === 'development' && (
+                      {/* Error Boundary Test - Hidden for now */}
+                      {/* {process.env.NODE_ENV === 'development' && (
                         <div className="fixed bottom-4 right-4 z-50">
                           <ErrorBoundaryTest />
                         </div>
-                      )}
+                      )} */}
                     </APIErrorBoundary>
                   } />
                   <Route path="guards" element={
