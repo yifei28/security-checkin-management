@@ -39,7 +39,7 @@ export const testDateFiltering = () => {
     endDate: endDate
   });
 
-  const fullUrl = `http://localhost:8080/api/checkin?${params.toString()}`;
+  const fullUrl = `/api/checkin?${params.toString()}`;
   console.log('完整API URL:', fullUrl);
 
   // 解码后的URL（更容易阅读）

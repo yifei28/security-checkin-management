@@ -71,7 +71,7 @@ export default function DateFilterDebug() {
       params.append('endDate', endDate);
     }
 
-    const apiUrl = `http://localhost:8080/api/checkin?${params}`;
+    const apiUrl = `/api/checkin?${params}`;
 
     // 测试样本记录
     const testRecords = [
