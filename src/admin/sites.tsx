@@ -234,7 +234,7 @@ export default function SiteManagement() {
       const newSite: SiteResponse = {
         ...newSiteData,
         id: String(newSiteData.id),
-        assignedGuardIds: newSiteData.assignedGuardIds?.map((id: any) => String(id)) || []
+        assignedGuardIds: newSiteData.assignedGuardIds?.map((id: string | number) => String(id)) || []
       };
       
       console.log('[SITES] Add response:', newSite);
@@ -317,7 +317,7 @@ export default function SiteManagement() {
       const updated: SiteResponse = {
         ...updatedData,
         id: String(updatedData.id),
-        assignedGuardIds: updatedData.assignedGuardIds?.map((id: any) => String(id)) || []
+        assignedGuardIds: updatedData.assignedGuardIds?.map((id: string | number) => String(id)) || []
       };
       
       console.log('[SITES] Update response:', updated);

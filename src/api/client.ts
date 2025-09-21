@@ -148,21 +148,21 @@ export class ApiClient {
   /**
    * Make a POST request
    */
-  async post<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
+  async post<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
     return this.instance.post(url, data, config);
   }
 
   /**
    * Make a PUT request
    */
-  async put<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
+  async put<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
     return this.instance.put(url, data, config);
   }
 
   /**
    * Make a PATCH request
    */
-  async patch<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
+  async patch<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
     return this.instance.patch(url, data, config);
   }
 
@@ -183,21 +183,21 @@ export class ApiClient {
   /**
    * Make a POST request expecting a single object response
    */
-  async postSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+  async postSingle<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
     return this.instance.post(url, data, config);
   }
 
   /**
    * Make a PUT request expecting a single object response
    */
-  async putSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+  async putSingle<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
     return this.instance.put(url, data, config);
   }
 
   /**
    * Make a PATCH request expecting a single object response
    */
-  async patchSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+  async patchSingle<T>(url: string, data?: unknown, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
     return this.instance.patch(url, data, config);
   }
 
