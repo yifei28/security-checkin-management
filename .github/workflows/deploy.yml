@@ -75,12 +75,12 @@ jobs:
         command_timeout: 20m
         script: |
           # 设置项目目录路径
-          PROJECT_DIR="$HOME/checkin-frontend"
+          PROJECT_DIR="$HOME/security-checkin-management"
 
           # 检查项目目录是否存在，如果不存在则克隆
           if [ ! -d "$PROJECT_DIR" ]; then
             echo "🔄 Repository not found, cloning..."
-            git clone https://github.com/yifei28/checkin-frontend.git "$PROJECT_DIR"
+            git clone https://github.com/yifei28/security-checkin-management.git "$PROJECT_DIR"
           fi
 
           # 切换到项目目录
@@ -97,7 +97,7 @@ jobs:
               echo "🔄 Fetch failed, re-cloning repository..."
               cd "$HOME"
               rm -rf "$PROJECT_DIR"
-              git clone https://github.com/yifei28/checkin-frontend.git "$PROJECT_DIR"
+              git clone https://github.com/yifei28/security-checkin-management.git "$PROJECT_DIR"
               cd "$PROJECT_DIR"
             else
               git reset --hard origin/main
