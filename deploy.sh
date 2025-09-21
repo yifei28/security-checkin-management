@@ -49,6 +49,33 @@ check_requirements() {
     log_success "All requirements satisfied"
 }
 
+# Git拉取重试函数
+pull_code_with_retry() {
+    local max_attempts=10
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        log_warning "🔄 Git pull attempt $attempt/$max_attempts..."
+
+        # 尝试正常拉取
+        if timeout 60 git pull origin main --no-edit; then
+            log_success "✅ Code pulled successfully"
+            return 0
+        else
+            log_error "❌ Pull attempt $attempt failed"
+
+            attempt=$((attempt + 1))
+            if [ $attempt -le $max_attempts ]; then
+                log_warning "⏳ Waiting 10 seconds before retry..."
+                sleep 10
+            fi
+        fi
+    done
+
+    log_error "💥 All $max_attempts git pull attempts failed"
+    return 1
+}
+
 # 更新代码（如果在服务器上）
 update_code() {
     if [ "$1" == "--update" ]; then
@@ -57,18 +84,13 @@ update_code() {
         # 配置Git安全目录（避免权限问题）
         git config --global --add safe.directory "$PROJECT_DIR" 2>/dev/null || true
 
-        # 拉取最新代码
-        if git pull origin main; then
-            log_success "Code updated successfully"
+        # 执行Git操作
+        if pull_code_with_retry; then
+            log_success "✅ Code update completed"
         else
-            log_warning "Git pull failed, trying to reset and pull again..."
-            if git fetch origin; then
-                git reset --hard origin/main
-                log_success "Code updated with hard reset"
-            else
-                log_error "Failed to update code"
-                exit 1
-            fi
+            log_error "💥 Git update failed after 10 attempts"
+            log_error "🚫 Deployment aborted"
+            exit 1
         fi
     else
         log_info "Skipping code update (use --update flag to update from git)"
