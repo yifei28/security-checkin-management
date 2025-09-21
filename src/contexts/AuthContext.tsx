@@ -16,7 +16,7 @@ interface AuthUser {
   fullName?: string;
   email?: string;
   lastLoginAt?: string;
-  createdAt: Date;
+  createdAt: string;
   isActive: boolean;
 }
 
@@ -238,7 +238,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           username: state.user.username,
           role: state.user.role,
           createdAt: state.user.createdAt,
-          lastLoginAt: new Date(),
+          lastLoginAt: new Date().toISOString(),
           fullName: state.user.fullName,
           email: state.user.email,
           isActive: state.user.isActive,
@@ -347,8 +347,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             role: storedUser.role,
             fullName: storedUser.fullName,
             email: storedUser.email,
-            lastLoginAt: storedUser.lastLoginAt?.toISOString(),
-            createdAt: storedUser.createdAt,
+            lastLoginAt: storedUser.lastLoginAt || '',
+            createdAt: storedUser.createdAt || '',
             isActive: storedUser.isActive,
           };
         }
@@ -377,7 +377,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               id: payload?.sub || 'unknown',
               username: payload?.username || 'user',
               role: payload?.role || 'admin',
-              createdAt: new Date(),
+              createdAt: new Date().toISOString(),
               isActive: true,
             };
             
@@ -441,11 +441,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
           username: credentials.username,
           password: credentials.password,
         }),
+        skipRefresh: true, // Skip token refresh for login requests
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || '登录失败，请检查用户名和密码');
+        // Try to parse JSON error first, fallback to text
+        let errorMessage = '登录失败，请检查用户名和密码';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorData.msg || errorMessage;
+        } catch (jsonError) {
+          try {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          } catch (textError) {
+            // Use default message
+          }
+        }
+
+        // Enhance error message based on status code
+        switch (response.status) {
+          case 401:
+            errorMessage = '用户名或密码错误';
+            break;
+          case 403:
+            errorMessage = '账户已被禁用，请联系管理员';
+            break;
+          case 429:
+            errorMessage = '登录尝试过于频繁，请稍后重试';
+            break;
+          case 500:
+            errorMessage = '服务器内部错误，请稍后重试';
+            break;
+          case 0:
+            errorMessage = '网络连接失败，请检查网络连接';
+            break;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -459,7 +492,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         fullName: data.user?.fullName,
         email: data.user?.email,
         lastLoginAt: new Date().toISOString(),
-        createdAt: data.user?.createdAt ? new Date(data.user.createdAt) : new Date(),
+        createdAt: data.user?.createdAt || new Date().toISOString(),
         isActive: data.user?.isActive !== false,
       };
 
@@ -471,7 +504,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         username: user.username,
         role: user.role,
         createdAt: user.createdAt,
-        lastLoginAt: new Date(),
+        lastLoginAt: new Date().toISOString(),
         fullName: user.fullName,
         email: user.email,
         isActive: user.isActive,
@@ -487,16 +520,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       scheduleTokenRefresh(token);
 
     } catch (error) {
-      console.error('[AUTH] Login error:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : '网络连接错误，请检查网络后重试';
-      
+
       dispatch({
         type: 'AUTH_ERROR',
         payload: errorMessage
       });
-      
+
       throw error; // Re-throw for component handling
     }
   };
@@ -537,7 +569,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           username: updatedUser.username,
           role: updatedUser.role,
           createdAt: updatedUser.createdAt,
-          lastLoginAt: new Date(),
+          lastLoginAt: new Date().toISOString(),
           fullName: updatedUser.fullName,
           email: updatedUser.email,
           isActive: updatedUser.isActive,

@@ -10,7 +10,7 @@ import { authApi } from '../api/authApi';
 import { queryKeys } from '../api/queryKeys';
 import { logout as authLogout } from '../util/auth';
 import type {
-  ApiResponse,
+  ApiResponseSingle,
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
@@ -25,7 +25,7 @@ export const useLogin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> =>
+    mutationFn: (credentials: LoginRequest): Promise<ApiResponseSingle<LoginResponse>> =>
       authApi.login(credentials),
     
     onSuccess: (data) => {
@@ -56,7 +56,7 @@ export const useLogout = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (): Promise<ApiResponse<null>> => authApi.logout(),
+    mutationFn: (): Promise<ApiResponseSingle<null>> => authApi.logout(),
     
     onMutate: async () => {
       // Optimistically clear auth state immediately
@@ -83,7 +83,7 @@ export const useLogout = () => {
 export const useCurrentUser = () => {
   return useQuery({
     queryKey: queryKeys.auth.me(),
-    queryFn: (): Promise<ApiResponse<User>> => authApi.getCurrentUser(),
+    queryFn: (): Promise<ApiResponseSingle<User>> => authApi.getCurrentUser(),
     
     // Only fetch if we have a token
     enabled: !!localStorage.getItem('token'),
@@ -112,7 +112,7 @@ export const useRefreshToken = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (refreshToken: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> =>
+    mutationFn: (refreshToken: RefreshTokenRequest): Promise<ApiResponseSingle<RefreshTokenResponse>> =>
       authApi.refreshToken(refreshToken),
     
     onSuccess: (data) => {
@@ -141,7 +141,7 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (updates: Partial<User>): Promise<ApiResponse<User>> =>
+    mutationFn: (updates: Partial<User>): Promise<ApiResponseSingle<User>> =>
       authApi.updateProfile(updates),
     
     // Optimistic update
@@ -188,7 +188,7 @@ export const useChangePassword = () => {
       currentPassword: string;
       newPassword: string;
       confirmPassword: string;
-    }): Promise<ApiResponse<null>> => authApi.changePassword(data),
+    }): Promise<ApiResponseSingle<null>> => authApi.changePassword(data),
     
     onSuccess: () => {
       console.log('[AUTH HOOK] Password changed successfully');
@@ -205,7 +205,7 @@ export const useChangePassword = () => {
  */
 export const useRequestPasswordReset = () => {
   return useMutation({
-    mutationFn: (email: string): Promise<ApiResponse<null>> =>
+    mutationFn: (email: string): Promise<ApiResponseSingle<null>> =>
       authApi.requestPasswordReset(email),
     
     onSuccess: () => {
@@ -224,7 +224,7 @@ export const useRequestPasswordReset = () => {
 export const useVerifyToken = () => {
   return useQuery({
     queryKey: queryKeys.auth.verify(),
-    queryFn: (): Promise<ApiResponse<{ valid: boolean; user?: User }>> =>
+    queryFn: (): Promise<ApiResponseSingle<{ valid: boolean; user?: User }>> =>
       authApi.verifyToken(),
     
     // Only run if we have a token

@@ -31,9 +31,6 @@ export interface PaginationResponse {
 }
 
 /**
- * API Response with optional pagination
- */
-/**
  * Statistics for check-in records
  */
 export interface CheckInStatistics {
@@ -49,6 +46,18 @@ export interface CheckInStatistics {
   successRate: number;
 }
 
+/**
+ * API Response for single objects
+ */
+export interface ApiResponseSingle<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+/**
+ * API Response for arrays with optional pagination
+ */
 export interface ApiResponse<T> {
   success: boolean;
   data: T[];
@@ -58,12 +67,14 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Guard role enum values
+ * Guard role types
  */
-export enum GuardRole {
-  TEAM_MEMBER = 'TEAM_MEMBER',
-  TEAM_LEADER = 'TEAM_LEADER'
-}
+export const GuardRole = {
+  TEAM_MEMBER: 'TEAM_MEMBER',
+  TEAM_LEADER: 'TEAM_LEADER'
+} as const;
+
+export type GuardRole = typeof GuardRole[keyof typeof GuardRole];
 
 /**
  * Guard role display names mapping

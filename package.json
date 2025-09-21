@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ci": "playwright test tests/pre-push-check.spec.ts",
+    "test:core": "playwright test tests/typescript-fixes-core-validation.spec.ts",
+    "test:basic": "playwright test tests/basic-functionality.spec.ts",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "pre-push": "npm run lint && npm run build && npm run test:ci",
+    "test-push": "npm run build && npm run test:ci"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

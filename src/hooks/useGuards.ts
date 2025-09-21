@@ -11,6 +11,7 @@ import { queryKeys } from '../api/queryKeys';
 import type {
   PaginatedResponse,
   ApiResponse,
+  ApiResponseSingle,
   Guard,
   GuardFormData,
   EnhancedGuardSummary as GuardSummary,
@@ -106,7 +107,7 @@ export const useCreateGuard = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (guardData: GuardFormData): Promise<ApiResponse<Guard>> =>
+    mutationFn: (guardData: GuardFormData): Promise<ApiResponseSingle<Guard>> =>
       guardsApi.createGuard(guardData),
     
     onSuccess: (data) => {
@@ -142,7 +143,7 @@ export const useUpdateGuard = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ guardId, updates }: { guardId: string; updates: Partial<GuardFormData> }): Promise<ApiResponse<Guard>> =>
+    mutationFn: ({ guardId, updates }: { guardId: string; updates: Partial<GuardFormData> }): Promise<ApiResponseSingle<Guard>> =>
       guardsApi.updateGuard(guardId, updates),
     
     // Optimistic update
@@ -151,7 +152,7 @@ export const useUpdateGuard = () => {
       await queryClient.cancelQueries({ queryKey: queryKeys.guards.detail(guardId) });
 
       // Snapshot previous value
-      const previousGuard = queryClient.getQueryData<ApiResponse<Guard>>(queryKeys.guards.detail(guardId));
+      const previousGuard = queryClient.getQueryData<ApiResponseSingle<Guard>>(queryKeys.guards.detail(guardId));
 
       // Optimistically update
       if (previousGuard?.data) {
@@ -225,14 +226,14 @@ export const useUploadGuardPhoto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ guardId, photo }: { guardId: string; photo: File }): Promise<ApiResponse<{ photoUrl: string }>> =>
+    mutationFn: ({ guardId, photo }: { guardId: string; photo: File }): Promise<ApiResponseSingle<{ photoUrl: string }>> =>
       guardsApi.uploadGuardPhoto(guardId, photo),
     
     onSuccess: (data, { guardId }) => {
       if (data.success && data.data) {
         // Update guard's photo URL in cache
         const guardQuery = queryKeys.guards.detail(guardId);
-        queryClient.setQueryData(guardQuery, (old: ApiResponse<Guard> | undefined) => {
+        queryClient.setQueryData(guardQuery, (old: ApiResponseSingle<Guard> | undefined) => {
           if (old?.data) {
             return {
               ...old,
@@ -354,7 +355,7 @@ export const useExportGuards = () => {
     mutationFn: (filters?: {
       siteIds?: string[];
       dateRange?: { startDate: string; endDate: string };
-    }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> =>
+    }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> =>
       guardsApi.exportGuards(filters),
     
     onSuccess: (data) => {

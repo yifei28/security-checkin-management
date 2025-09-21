@@ -11,6 +11,7 @@ import { queryKeys } from '../api/queryKeys';
 import type {
   PaginatedResponse,
   ApiResponse,
+  ApiResponseSingle,
   CheckInRecord,
   CheckInRecordSummary,
   DashboardStats,
@@ -383,7 +384,7 @@ export const useExportCheckIns = () => {
         statuses?: CheckInStatus[];
       };
       includePhotos?: boolean;
-    }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> =>
+    }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> =>
       checkinsApi.exportCheckIns(params),
     
     onSuccess: (data) => {

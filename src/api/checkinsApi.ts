@@ -8,6 +8,7 @@
 import { api } from './client';
 import type {
   ApiResponse,
+  ApiResponseSingle,
   PaginatedResponse,
   CheckInRecord,
   CheckInRecordSummary,
@@ -78,7 +79,7 @@ export const checkinsApi = {
       const apiData = response.data;
       const paginatedResponse: PaginatedResponse<CheckInRecord> = {
         success: apiData.success,
-        data: apiData.data,
+        data: Array.isArray(apiData.data) ? apiData.data as unknown as CheckInRecord[] : [],
         message: apiData.message || '',
         pagination: convertPagination(apiData.pagination)!,
       };
@@ -450,9 +451,9 @@ export const checkinsApi = {
       statuses?: CheckInStatus[];
     };
     includePhotos?: boolean;
-  }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> {
+  }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> {
     try {
-      const response = await api.post<{ downloadUrl: string; fileName: string }>(
+      const response = await api.postSingle<{ downloadUrl: string; fileName: string }>(
         '/api/checkins/export',
         params
       );

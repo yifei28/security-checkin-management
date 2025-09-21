@@ -8,7 +8,7 @@
 import { api } from './client';
 import { setAuthData } from '../util/auth';
 import type {
-  ApiResponse,
+  ApiResponseSingle,
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
@@ -25,9 +25,9 @@ export const authApi = {
    * User login with username and password
    * Stores authentication data on successful login
    */
-  async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+  async login(credentials: LoginRequest): Promise<ApiResponseSingle<LoginResponse>> {
     try {
-      const response = await api.post<LoginResponse>('/api/login', credentials);
+      const response = await api.postSingle<LoginResponse>('/api/login', credentials);
       
       // Store authentication data in localStorage on successful login
       if (response.data.success && response.data.data) {
@@ -50,10 +50,10 @@ export const authApi = {
    * User logout
    * Clears local authentication data and optionally notifies server
    */
-  async logout(): Promise<ApiResponse<null>> {
+  async logout(): Promise<ApiResponseSingle<null>> {
     try {
       // Attempt to notify server of logout (optional, may fail if token expired)
-      const response = await api.post<null>('/api/logout');
+      const response = await api.postSingle<null>('/api/logout');
       
       console.log('[AUTH] Logout successful');
       return response.data;
@@ -74,9 +74,9 @@ export const authApi = {
    * Refresh JWT token
    * Extends user session by getting a new token
    */
-  async refreshToken(refreshToken: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> {
+  async refreshToken(refreshToken: RefreshTokenRequest): Promise<ApiResponseSingle<RefreshTokenResponse>> {
     try {
-      const response = await api.post<RefreshTokenResponse>('/api/auth/refresh', refreshToken);
+      const response = await api.postSingle<RefreshTokenResponse>('/api/auth/refresh', refreshToken);
       
       // Update stored token if refresh successful
       if (response.data.success && response.data.data) {
@@ -102,9 +102,9 @@ export const authApi = {
    * Get current user profile/information
    * Fetches fresh user data from server
    */
-  async getCurrentUser(): Promise<ApiResponse<User>> {
+  async getCurrentUser(): Promise<ApiResponseSingle<User>> {
     try {
-      const response = await api.get<User>('/api/auth/me');
+      const response = await api.getSingle<User>('/api/auth/me');
       
       // Update stored user data with fresh info from server
       if (response.data.success && response.data.data) {
@@ -130,9 +130,9 @@ export const authApi = {
    * Update user profile information
    * Allows users to modify their profile data
    */
-  async updateProfile(updates: Partial<User>): Promise<ApiResponse<User>> {
+  async updateProfile(updates: Partial<User>): Promise<ApiResponseSingle<User>> {
     try {
-      const response = await api.put<User>('/api/auth/profile', updates);
+      const response = await api.putSingle<User>('/api/auth/profile', updates);
       
       // Update stored user data with new profile info
       if (response.data.success && response.data.data) {
@@ -162,9 +162,9 @@ export const authApi = {
     currentPassword: string;
     newPassword: string;
     confirmPassword: string;
-  }): Promise<ApiResponse<null>> {
+  }): Promise<ApiResponseSingle<null>> {
     try {
-      const response = await api.post<null>('/api/auth/change-password', data);
+      const response = await api.postSingle<null>('/api/auth/change-password', data);
       
       console.log('[AUTH] Password changed successfully');
       return response.data;
@@ -178,9 +178,9 @@ export const authApi = {
    * Request password reset
    * Sends password reset email/instructions
    */
-  async requestPasswordReset(email: string): Promise<ApiResponse<null>> {
+  async requestPasswordReset(email: string): Promise<ApiResponseSingle<null>> {
     try {
-      const response = await api.post<null>('/api/auth/forgot-password', { email });
+      const response = await api.postSingle<null>('/api/auth/forgot-password', { email });
       
       console.log('[AUTH] Password reset requested');
       return response.data;
@@ -194,9 +194,9 @@ export const authApi = {
    * Verify user session/token validity
    * Checks if current token is still valid without refreshing
    */
-  async verifyToken(): Promise<ApiResponse<{ valid: boolean; user?: User }>> {
+  async verifyToken(): Promise<ApiResponseSingle<{ valid: boolean; user?: User }>> {
     try {
-      const response = await api.get<{ valid: boolean; user?: User }>('/api/auth/verify');
+      const response = await api.getSingle<{ valid: boolean; user?: User }>('/api/auth/verify');
       
       // If token is valid but user data changed, update local storage
       if (response.data.success && response.data.data?.valid && response.data.data.user) {

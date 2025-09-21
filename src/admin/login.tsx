@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,11 +46,23 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  // Clear errors when form values change
+  // Track if user is actively modifying form
+  const prevValues = useRef({ username: '', password: '' });
+
+  // Clear errors only when user actively changes input (not on initial load or state updates)
   useEffect(() => {
-    if (error) {
+    const usernameChanged = prevValues.current.username !== watchedValues.username;
+    const passwordChanged = prevValues.current.password !== watchedValues.password;
+
+    if (error && (usernameChanged || passwordChanged)) {
       clearError();
     }
+
+    // Update previous values
+    prevValues.current = {
+      username: watchedValues.username,
+      password: watchedValues.password
+    };
   }, [watchedValues.username, watchedValues.password, clearError, error]);
 
   const onSubmit = async (data: LoginFormData) => {
@@ -59,7 +71,9 @@ export default function LoginPage() {
       // Navigation will be handled by the useEffect above
     } catch (error) {
       // Error handling is managed by the AuthContext
-      console.error('Login failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[LOGIN] Login failed:', error);
+      }
     }
   };
 
@@ -92,8 +106,22 @@ export default function LoginPage() {
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription>
+                    {error}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="text-xs mt-1 opacity-70">
+                        Debug: Error state active
+                      </div>
+                    )}
+                  </AlertDescription>
                 </Alert>
+              )}
+
+              {/* Debug info in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-muted-foreground">
+                  Debug State: error={error ? `"${error}"` : 'null'}, isLoading={isLoading.toString()}
+                </div>
               )}
               
               {/* Username Field */}

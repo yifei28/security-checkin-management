@@ -8,6 +8,7 @@
 import { api } from './client';
 import type {
   ApiResponse,
+  ApiResponseSingle,
   PaginatedResponse,
   Site,
   SiteFormData,
@@ -74,11 +75,11 @@ export const sitesApi = {
   /**
    * Get a specific site by ID
    */
-  async getSite(siteId: string): Promise<ApiResponse<Site>> {
+  async getSite(siteId: string): Promise<ApiResponseSingle<Site>> {
     try {
       const siteIdForApi = stripIdPrefix(siteId, 'site_');
-      const response = await api.get<Site>(`/api/sites/${siteIdForApi}`);
-      
+      const response = await api.getSingle<Site>(`/api/sites/${siteIdForApi}`);
+
       console.log(`[SITES API] Retrieved site: ${siteId}`);
       return response.data;
     } catch (error) {
@@ -90,14 +91,14 @@ export const sitesApi = {
   /**
    * Create a new site
    */
-  async createSite(siteData: SiteFormData): Promise<ApiResponse<Site>> {
+  async createSite(siteData: SiteFormData): Promise<ApiResponseSingle<Site>> {
     try {
-      const response = await api.post<Site>('/api/sites', siteData);
-      
+      const response = await api.postSingle<Site>('/api/sites', siteData);
+
       if (response.data.success && response.data.data) {
         console.log(`[SITES API] Created site: ${response.data.data.name}`);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error('[SITES API] Failed to create site:', error);
@@ -108,15 +109,15 @@ export const sitesApi = {
   /**
    * Update an existing site
    */
-  async updateSite(siteId: string, siteData: Partial<SiteFormData>): Promise<ApiResponse<Site>> {
+  async updateSite(siteId: string, siteData: Partial<SiteFormData>): Promise<ApiResponseSingle<Site>> {
     try {
       const siteIdForApi = stripIdPrefix(siteId, 'site_');
-      const response = await api.put<Site>(`/api/sites/${siteIdForApi}`, siteData);
-      
+      const response = await api.putSingle<Site>(`/api/sites/${siteIdForApi}`, siteData);
+
       if (response.data.success && response.data.data) {
         console.log(`[SITES API] Updated site: ${response.data.data.name}`);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error(`[SITES API] Failed to update site ${siteId}:`, error);
@@ -127,11 +128,11 @@ export const sitesApi = {
   /**
    * Delete a site
    */
-  async deleteSite(siteId: string): Promise<ApiResponse<null>> {
+  async deleteSite(siteId: string): Promise<ApiResponseSingle<null>> {
     try {
       const siteIdForApi = stripIdPrefix(siteId, 'site_');
-      const response = await api.delete<null>(`/api/sites/${siteIdForApi}`);
-      
+      const response = await api.deleteSingle<null>(`/api/sites/${siteIdForApi}`);
+
       console.log(`[SITES API] Deleted site: ${siteId}`);
       return response.data;
     } catch (error) {
@@ -158,19 +159,19 @@ export const sitesApi = {
   /**
    * Assign guards to a site
    */
-  async assignGuardsToSite(siteId: string, guardIds: string[]): Promise<ApiResponse<Site>> {
+  async assignGuardsToSite(siteId: string, guardIds: string[]): Promise<ApiResponseSingle<Site>> {
     try {
       const assignmentData: SiteAssignmentRequest = {
         siteId,
         guardIds,
       };
-      
-      const response = await api.post<Site>('/api/sites/assign', assignmentData);
-      
+
+      const response = await api.postSingle<Site>('/api/sites/assign', assignmentData);
+
       if (response.data.success) {
         console.log(`[SITES API] Assigned ${guardIds.length} guards to site: ${siteId}`);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error(`[SITES API] Failed to assign guards to site ${siteId}:`, error);
@@ -181,17 +182,17 @@ export const sitesApi = {
   /**
    * Remove guards from a site
    */
-  async unassignGuardsFromSite(siteId: string, guardIds: string[]): Promise<ApiResponse<Site>> {
+  async unassignGuardsFromSite(siteId: string, guardIds: string[]): Promise<ApiResponseSingle<Site>> {
     try {
-      const response = await api.post<Site>('/api/sites/unassign', {
+      const response = await api.postSingle<Site>('/api/sites/unassign', {
         siteId,
         guardIds,
       });
-      
+
       if (response.data.success) {
         console.log(`[SITES API] Unassigned ${guardIds.length} guards from site: ${siteId}`);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error(`[SITES API] Failed to unassign guards from site ${siteId}:`, error);
@@ -202,11 +203,11 @@ export const sitesApi = {
   /**
    * Get site summary statistics
    */
-  async getSiteSummary(siteId: string): Promise<ApiResponse<SiteSummary>> {
+  async getSiteSummary(siteId: string): Promise<ApiResponseSingle<SiteSummary>> {
     try {
       const siteIdForApi = stripIdPrefix(siteId, 'site_');
-      const response = await api.get<SiteSummary>(`/api/sites/${siteIdForApi}/summary`);
-      
+      const response = await api.getSingle<SiteSummary>(`/api/sites/${siteIdForApi}/summary`);
+
       console.log(`[SITES API] Retrieved summary for site: ${siteId}`);
       return response.data;
     } catch (error) {
@@ -396,14 +397,14 @@ export const sitesApi = {
   async updateSiteGeofence(siteId: string, geofence: {
     radiusMeters: number;
     strictMode: boolean;
-  }): Promise<ApiResponse<Site>> {
+  }): Promise<ApiResponseSingle<Site>> {
     try {
-      const response = await api.put<Site>(`/api/sites/${stripIdPrefix(siteId, 'site_')}/geofence`, geofence);
-      
+      const response = await api.putSingle<Site>(`/api/sites/${stripIdPrefix(siteId, 'site_')}/geofence`, geofence);
+
       if (response.data.success) {
         console.log(`[SITES API] Updated geofence for site: ${siteId}`);
       }
-      
+
       return response.data;
     } catch (error) {
       console.error(`[SITES API] Failed to update geofence for site ${siteId}:`, error);
@@ -421,9 +422,9 @@ export const sitesApi = {
       northEast: Location;
       southWest: Location;
     };
-  }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> {
+  }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> {
     try {
-      const response = await api.post<{ downloadUrl: string; fileName: string }>(
+      const response = await api.postSingle<{ downloadUrl: string; fileName: string }>(
         '/api/sites/export',
         { filters }
       );

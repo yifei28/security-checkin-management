@@ -11,6 +11,7 @@ import { queryKeys } from '../api/queryKeys';
 import type {
   PaginatedResponse,
   ApiResponse,
+  ApiResponseSingle,
   Site,
   SiteFormData,
   EnhancedSiteSummary as SiteSummary,
@@ -49,7 +50,7 @@ export const useSites = (params?: {
 export const useSite = (siteId: string) => {
   return useQuery({
     queryKey: queryKeys.sites.detail(siteId),
-    queryFn: (): Promise<ApiResponse<Site>> => sitesApi.getSite(siteId),
+    queryFn: (): Promise<ApiResponseSingle<Site>> => sitesApi.getSite(siteId),
     
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 10,   // 10 minutes
@@ -77,7 +78,7 @@ export const useSitesByGuard = (guardId: string) => {
 export const useSiteSummary = (siteId: string) => {
   return useQuery({
     queryKey: queryKeys.sites.summaryDetail(siteId),
-    queryFn: (): Promise<ApiResponse<SiteSummary>> => sitesApi.getSiteSummary(siteId),
+    queryFn: (): Promise<ApiResponseSingle<SiteSummary>> => sitesApi.getSiteSummary(siteId),
     
     staleTime: 1000 * 60 * 1, // 1 minute
     gcTime: 1000 * 60 * 3,    // 3 minutes
@@ -161,7 +162,7 @@ export const useCreateSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (siteData: SiteFormData): Promise<ApiResponse<Site>> =>
+    mutationFn: (siteData: SiteFormData): Promise<ApiResponseSingle<Site>> =>
       sitesApi.createSite(siteData),
     
     onSuccess: (data) => {
@@ -202,7 +203,7 @@ export const useUpdateSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ siteId, updates }: { siteId: string; updates: Partial<SiteFormData> }): Promise<ApiResponse<Site>> =>
+    mutationFn: ({ siteId, updates }: { siteId: string; updates: Partial<SiteFormData> }): Promise<ApiResponseSingle<Site>> =>
       sitesApi.updateSite(siteId, updates),
     
     // Optimistic update
@@ -252,7 +253,7 @@ export const useDeleteSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (siteId: string): Promise<ApiResponse<null>> =>
+    mutationFn: (siteId: string): Promise<ApiResponseSingle<null>> =>
       sitesApi.deleteSite(siteId),
     
     onSuccess: (data, siteId) => {
@@ -284,7 +285,7 @@ export const useAssignGuardsToSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ siteId, guardIds }: { siteId: string; guardIds: string[] }): Promise<ApiResponse<Site>> =>
+    mutationFn: ({ siteId, guardIds }: { siteId: string; guardIds: string[] }): Promise<ApiResponseSingle<Site>> =>
       sitesApi.assignGuardsToSite(siteId, guardIds),
     
     onSuccess: (data, { siteId, guardIds }) => {
@@ -335,7 +336,7 @@ export const useUpdateSiteGeofence = () => {
     mutationFn: ({ siteId, geofence }: { 
       siteId: string; 
       geofence: { radiusMeters: number; strictMode: boolean } 
-    }): Promise<ApiResponse<Site>> =>
+    }): Promise<ApiResponseSingle<Site>> =>
       sitesApi.updateSiteGeofence(siteId, geofence),
     
     onSuccess: (data, { siteId }) => {
@@ -414,7 +415,7 @@ export const useExportSites = () => {
         northEast: Location;
         southWest: Location;
       };
-    }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> =>
+    }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> =>
       sitesApi.exportSites(filters),
     
     onSuccess: (data) => {

@@ -16,7 +16,9 @@ This is a React + TypeScript + Vite frontend application for a check-in manageme
 - **Preview production build**: `npm run preview`
 
 ### Testing and Quality Assurance
-- **End-to-End Tests**: Playwright tests available in `tests/` directory
+- **End-to-End Tests**: `npx playwright test` - 20+ comprehensive test scenarios in `tests/` directory
+- **Run Single Test**: `npx playwright test [test-name].spec.ts`
+- **Test UI Mode**: `npx playwright test --ui` for interactive test debugging
 - **Type Checking**: TypeScript compilation occurs during build process
 - **Error Boundaries**: Global error handling via `APIErrorBoundary` component
 
@@ -102,6 +104,7 @@ src/
 - **Request/Response Interceptors**: `src/api/interceptors.ts` - Automatic auth headers, error handling, token refresh
 - **React Query Integration**: `src/api/queryClient.ts` - Global cache configuration and error handling
 - **Query Key Factory**: `src/api/queryKeys.ts` - Centralized query key management for cache invalidation
+- **API Base URL**: `src/util/config.ts` - Uses `/api` prefix, proxied to backend at localhost:8080 in dev
 
 **Service Layer Pattern**:
 - **authApi.ts**: Login, logout, token refresh, user management
@@ -220,12 +223,15 @@ export default {
 - PostCSS plugin is required for Vite to process Tailwind v4
 
 ## Configuration Files
-- `vite.config.ts`: Vite build configuration with path aliases
+- `vite.config.ts`: Vite build configuration with path aliases and API proxy to localhost:8080
 - `tailwind.config.js`: Minimal Tailwind CSS v4 configuration
 - `postcss.config.js`: PostCSS configuration for Tailwind v4 processing
 - `components.json`: shadcn/ui component configuration
 - `tsconfig.json`: TypeScript project references
 - `eslint.config.js`: ESLint configuration
+- `playwright.config.ts`: E2E test configuration with auto-start dev server
+- `Dockerfile`: Multi-stage build (Node.js 20 → nginx production)
+- `nginx.conf`: Production nginx config with React Router support and caching
 
 ## Development Guidelines
 

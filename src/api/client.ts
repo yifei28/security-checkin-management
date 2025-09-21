@@ -9,7 +9,7 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { BASE_URL } from '../util/config';
-import type { ApiResponse } from '../types';
+import type { ApiResponse, ApiResponseSingle } from '../types';
 import {
   requestInterceptor,
   requestErrorInterceptor,
@@ -62,11 +62,19 @@ apiClient.interceptors.request.use(requestInterceptor, requestErrorInterceptor);
 apiClient.interceptors.response.use(responseInterceptor, responseErrorInterceptor);
 
 /**
- * Type-safe API response wrapper
+ * Type-safe API response wrapper for arrays
  * Ensures all API responses conform to our ApiResponse interface
  */
 export interface ApiClientResponse<T> extends AxiosResponse {
   data: ApiResponse<T>;
+}
+
+/**
+ * Type-safe API response wrapper for single objects
+ * Ensures all API responses conform to our ApiResponseSingle interface
+ */
+export interface ApiClientResponseSingle<T> extends AxiosResponse {
+  data: ApiResponseSingle<T>;
 }
 
 /**
@@ -162,6 +170,41 @@ export class ApiClient {
    * Make a DELETE request
    */
   async delete<T>(url: string, config?: ApiRequestConfig): Promise<ApiClientResponse<T>> {
+    return this.instance.delete(url, config);
+  }
+
+  /**
+   * Make a GET request expecting a single object response
+   */
+  async getSingle<T>(url: string, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+    return this.instance.get(url, config);
+  }
+
+  /**
+   * Make a POST request expecting a single object response
+   */
+  async postSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+    return this.instance.post(url, data, config);
+  }
+
+  /**
+   * Make a PUT request expecting a single object response
+   */
+  async putSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+    return this.instance.put(url, data, config);
+  }
+
+  /**
+   * Make a PATCH request expecting a single object response
+   */
+  async patchSingle<T>(url: string, data?: any, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
+    return this.instance.patch(url, data, config);
+  }
+
+  /**
+   * Make a DELETE request expecting a single object response
+   */
+  async deleteSingle<T>(url: string, config?: ApiRequestConfig): Promise<ApiClientResponseSingle<T>> {
     return this.instance.delete(url, config);
   }
 

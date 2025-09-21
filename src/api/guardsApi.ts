@@ -8,6 +8,7 @@
 import { api } from './client';
 import type {
   ApiResponse,
+  ApiResponseSingle,
   PaginatedResponse,
   Guard,
   GuardFormData,
@@ -47,7 +48,7 @@ export const guardsApi = {
       console.log('[GUARDS API] Retrieved guards list');
       
       // The server should return a PaginatedResponse, but we need to handle the ApiResponse wrapper
-      const apiResponse = response.data as PaginatedResponse<Guard>;
+      const apiResponse = response.data as any;
       return apiResponse;
     } catch (error) {
       console.error('[GUARDS API] Failed to get guards:', error);
@@ -73,9 +74,9 @@ export const guardsApi = {
   /**
    * Create a new guard
    */
-  async createGuard(guardData: GuardFormData): Promise<ApiResponse<Guard>> {
+  async createGuard(guardData: GuardFormData): Promise<ApiResponseSingle<Guard>> {
     try {
-      const response = await api.post<Guard>('/api/guards', guardData);
+      const response = await api.postSingle<Guard>('/api/guards', guardData);
       
       if (response.data.success && response.data.data) {
         console.log(`[GUARDS API] Created guard: ${response.data.data.name}`);
@@ -91,9 +92,9 @@ export const guardsApi = {
   /**
    * Update an existing guard
    */
-  async updateGuard(guardId: string, guardData: Partial<GuardFormData>): Promise<ApiResponse<Guard>> {
+  async updateGuard(guardId: string, guardData: Partial<GuardFormData>): Promise<ApiResponseSingle<Guard>> {
     try {
-      const response = await api.put<Guard>(`/api/guards/${guardId}`, guardData);
+      const response = await api.putSingle<Guard>(`/api/guards/${guardId}`, guardData);
       
       if (response.data.success && response.data.data) {
         console.log(`[GUARDS API] Updated guard: ${response.data.data.name}`);
@@ -124,13 +125,13 @@ export const guardsApi = {
   /**
    * Upload guard photo
    */
-  async uploadGuardPhoto(guardId: string, photoFile: File): Promise<ApiResponse<{ photoUrl: string }>> {
+  async uploadGuardPhoto(guardId: string, photoFile: File): Promise<ApiResponseSingle<{ photoUrl: string }>> {
     try {
       const formData = new FormData();
       formData.append('photo', photoFile);
       
-      const response = await api.post<{ photoUrl: string }>(
-        `/api/guards/${guardId}/photo`, 
+      const response = await api.postSingle<{ photoUrl: string }>(
+        `/api/guards/${guardId}/photo`,
         formData,
         {
           headers: {
@@ -343,9 +344,9 @@ export const guardsApi = {
   async exportGuards(filters?: {
     siteIds?: string[];
     dateRange?: { startDate: string; endDate: string };
-  }): Promise<ApiResponse<{ downloadUrl: string; fileName: string }>> {
+  }): Promise<ApiResponseSingle<{ downloadUrl: string; fileName: string }>> {
     try {
-      const response = await api.post<{ downloadUrl: string; fileName: string }>(
+      const response = await api.postSingle<{ downloadUrl: string; fileName: string }>(
         '/api/guards/export',
         { filters }
       );
