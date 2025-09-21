@@ -89,42 +89,18 @@ jobs:
           # 配置Git安全目录（避免权限问题）
           git config --global --add safe.directory "$PROJECT_DIR"
 
-          # 拉取最新代码，使用重试机制处理不稳定的网络
-          echo "📡 Pulling latest changes with retry mechanism..."
-
-          pull_success=false
-          max_attempts=10
-          attempt=1
-
-          while [ $attempt -le $max_attempts ] && [ "$pull_success" = false ]; do
-            echo "🔄 Git pull attempt $attempt/$max_attempts..."
-
-            if timeout 60 git pull origin main --no-edit; then
-              echo "✅ Code pulled successfully"
-              pull_success=true
-            else
-              echo "❌ Pull attempt $attempt failed"
-              attempt=$((attempt + 1))
-
-              if [ $attempt -le $max_attempts ]; then
-                echo "⏳ Waiting 10 seconds before retry..."
-                sleep 10
-              fi
-            fi
-          done
-
-          if [ "$pull_success" = false ]; then
-            echo "💥 All $max_attempts git pull attempts failed"
-            echo "🔄 Attempting fallback: fetch and reset..."
-            if git fetch origin && git reset --hard origin/main; then
-              echo "✅ Fallback successful"
-            else
-              echo "🔄 Final fallback: re-cloning repository..."
+          # 拉取最新代码，如果失败则尝试重新获取
+          echo "📡 Pulling latest changes..."
+          if ! git pull origin main; then
+            echo "⚠️ Git pull failed, trying to reset and pull again..."
+            if ! git fetch origin; then
+              echo "🔄 Fetch failed, re-cloning repository..."
               cd "$HOME"
               rm -rf "$PROJECT_DIR"
               git clone https://github.com/yifei28/security-checkin-management.git "$PROJECT_DIR"
               cd "$PROJECT_DIR"
-              echo "✅ Repository re-cloned successfully"
+            else
+              git reset --hard origin/main
             fi
           fi
 
