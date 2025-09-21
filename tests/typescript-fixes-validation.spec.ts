@@ -16,7 +16,7 @@ const TEST_CREDENTIALS = {
   password: '11235813'
 };
 
-async function loginAsAdmin(page: any) {
+async function loginAsAdmin(page: unknown) {
   await page.goto('/login');
   await page.fill('input[type="text"]', TEST_CREDENTIALS.username);
   await page.fill('input[type="password"]', TEST_CREDENTIALS.password);
@@ -241,7 +241,7 @@ test.describe('TypeScript Fixes Validation', () => {
         try {
           const download = await downloadPromise;
           expect(download.suggestedFilename()).toMatch(/\.(csv|xlsx)$/);
-        } catch (error) {
+        } catch (_error) {
           // Download might not work in test environment, but no type errors should occur
         }
 

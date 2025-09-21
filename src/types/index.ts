@@ -839,12 +839,12 @@ export type ArrayElement<T> = T extends readonly (infer U)[] ? U : never;
 /**
  * Function parameter types utility
  */
-export type FunctionParams<T extends (...args: any[]) => any> = T extends (...args: infer P) => any ? P : never;
+export type FunctionParams<T extends (...args: unknown[]) => any> = T extends (...args: infer P) => any ? P : never;
 
 /**
  * Function return type utility
  */
-export type FunctionReturn<T extends (...args: any[]) => any> = T extends (...args: any[]) => infer R ? R : never;
+export type FunctionReturn<T extends (...args: unknown[]) => any> = T extends (...args: unknown[]) => infer R ? R : never;
 
 // ===================================================================
 // API Client Types

@@ -64,7 +64,7 @@ export const sitesApi = {
       console.log('[SITES API] Retrieved sites list');
       
       // The server should return a PaginatedResponse, but we need to handle the ApiResponse wrapper  
-      const apiResponse = response.data as any;
+      const apiResponse = response.data as unknown;
       return apiResponse;
     } catch (error) {
       console.error('[SITES API] Failed to get sites:', error);

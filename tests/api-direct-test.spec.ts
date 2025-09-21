@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('API直接测试 - 绕过登录验证时间功能', () => {
   test('验证API端点和时间参数', async ({ page }) => {
-    const apiRequests: any[] = [];
-    const apiResponses: any[] = [];
+    const apiRequests: unknown[] = [];
+    const apiResponses: unknown[] = [];
     
     // 监听所有API请求和响应
     page.on('request', request => {

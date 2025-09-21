@@ -55,7 +55,7 @@ export const requestInterceptor = (config: InternalAxiosRequestConfig): Internal
  * Request error interceptor
  * Handles errors that occur before the request is sent
  */
-export const requestErrorInterceptor = (error: any): Promise<any> => {
+export const requestErrorInterceptor = (error: unknown): Promise<any> => {
   console.error('[API] Request interceptor error:', error);
   return Promise.reject(error);
 };
@@ -189,7 +189,7 @@ export const responseErrorInterceptor = (error: AxiosError): Promise<any> => {
  * Error transformer utility
  * Converts axios errors to a consistent format for the application
  */
-export const transformApiError = (error: any): {
+export const transformApiError = (error: unknown): {
   message: string;
   status?: number;
   type: string;
@@ -253,7 +253,7 @@ export const transformApiError = (error: any): {
 /**
  * Utility to check if user should be logged out based on error
  */
-export const shouldLogout = (error: any): boolean => {
+export const shouldLogout = (error: unknown): boolean => {
   return error.name === 'AuthenticationError' || 
          (error.response?.status === 401);
 };
@@ -263,7 +263,7 @@ declare module 'axios' {
   interface InternalAxiosRequestConfig {
     metadata?: {
       requestTime?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   }
   
@@ -272,7 +272,7 @@ declare module 'axios' {
       requestTime?: number;
       responseTime?: number;
       duration?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   }
 }

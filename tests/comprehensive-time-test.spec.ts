@@ -6,7 +6,7 @@ test.describe('签到记录时间功能完整测试', () => {
     await context.addInitScript(() => {
       // 设置时区为中国
       Object.defineProperty(Intl, 'DateTimeFormat', {
-        value: function(...args: any[]) {
+        value: function(...args: unknown[]) {
           if (args[1]) {
             args[1].timeZone = args[1].timeZone || 'Asia/Shanghai';
           } else {
@@ -165,7 +165,7 @@ test.describe('签到记录时间功能完整测试', () => {
   });
 
   test('时间筛选器详细功能测试', async ({ page }) => {
-    const apiRequests: any[] = [];
+    const apiRequests: unknown[] = [];
     
     // 监听所有API请求
     page.on('request', request => {

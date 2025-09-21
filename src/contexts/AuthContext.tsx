@@ -450,11 +450,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorData.msg || errorMessage;
-        } catch (jsonError) {
+        } catch (_jsonError) {
           try {
             const errorText = await response.text();
             errorMessage = errorText || errorMessage;
-          } catch (textError) {
+          } catch (_textError) {
             // Use default message
           }
         }

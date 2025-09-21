@@ -27,14 +27,14 @@ export interface EnhancedAPIError extends Error {
   status?: number;
   code?: string;
   timestamp: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   retry?: () => Promise<void>;
 }
 
 /**
  * Classify API errors based on response and message
  */
-export function classifyError(error: any): APIErrorType {
+export function classifyError(error: unknown): APIErrorType {
   // Network connectivity errors
   if (error.code === 'NETWORK_ERROR' || 
       error.message.includes('Network Error') ||
@@ -90,8 +90,8 @@ export function classifyError(error: any): APIErrorType {
  * Transform API errors into enhanced error objects
  */
 export function transformAPIError(
-  error: any, 
-  context?: Record<string, any>
+  error: unknown, 
+  context?: Record<string, unknown>
 ): EnhancedAPIError {
   const type = classifyError(error);
   const timestamp = new Date().toISOString();
@@ -135,7 +135,7 @@ export function shouldTriggerBoundary(error: EnhancedAPIError): boolean {
 /**
  * Log error for debugging and monitoring
  */
-export function logError(error: EnhancedAPIError, context?: Record<string, any>) {
+export function logError(error: EnhancedAPIError, context?: Record<string, unknown>) {
   // Use the centralized logger
   import('../util/logger').then(({ logger }) => {
     logger.error(`API Error: ${error.type}`, error, {
@@ -155,7 +155,7 @@ export function logError(error: EnhancedAPIError, context?: Record<string, any>)
 /**
  * Global query error handler
  */
-export const globalQueryErrorHandler = (error: any) => {
+export const globalQueryErrorHandler = (error: unknown) => {
   const enhancedError = transformAPIError(error, {
     source: 'React Query',
     type: 'Query Error'
@@ -185,7 +185,7 @@ export const globalQueryErrorHandler = (error: any) => {
 /**
  * Global mutation error handler
  */
-export const globalMutationErrorHandler = (error: any) => {
+export const globalMutationErrorHandler = (error: unknown) => {
   const enhancedError = transformAPIError(error, {
     source: 'React Query',
     type: 'Mutation Error'
@@ -226,7 +226,7 @@ export function createMutationCacheWithErrorHandling() {
 /**
  * Utility to manually handle errors in components
  */
-export function handleComponentError(error: any, componentName: string) {
+export function handleComponentError(error: unknown, componentName: string) {
   const enhancedError = transformAPIError(error, {
     source: 'Component',
     componentName
@@ -250,7 +250,7 @@ export async function retryOperation<T>(
   maxAttempts: number = 3,
   delay: number = 1000
 ): Promise<T> {
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {

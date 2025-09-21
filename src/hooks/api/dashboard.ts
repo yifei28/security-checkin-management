@@ -64,7 +64,7 @@ export function useDashboardMetrics() {
       try {
         // Try to fetch from the actual API endpoint
         return await apiFetch(`${BASE_URL}/api/dashboard/metrics`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If API is not available, return mock data
         console.log('[DASHBOARD] API not available, using mock data:', error.message);
         

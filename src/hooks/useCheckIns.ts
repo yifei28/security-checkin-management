@@ -159,7 +159,7 @@ export const useCheckInTrends = (params: {
       totalCheckIns: number;
       successfulCheckIns: number;
       failedCheckIns: number;
-      [key: string]: any;
+      [key: string]: unknown;
     }>>> => checkinsApi.getCheckInTrends(params),
     
     staleTime: 1000 * 60 * 5, // 5 minutes

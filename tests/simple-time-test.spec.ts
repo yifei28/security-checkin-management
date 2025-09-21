@@ -86,8 +86,8 @@ test.describe('签到记录页面基础测试', () => {
   });
 
   test('监听网络请求和API调用', async ({ page }) => {
-    const apiRequests: any[] = [];
-    const networkErrors: any[] = [];
+    const apiRequests: unknown[] = [];
+    const networkErrors: unknown[] = [];
 
     // 监听所有网络请求
     page.on('request', request => {

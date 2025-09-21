@@ -23,7 +23,7 @@ const TEST_CREDENTIALS = {
   password: '11235813'
 };
 
-const TEST_DATA = {
+// const TEST_DATA = {
   guard: {
     name: 'CI测试保安',
     phoneNumber: '13800138000'

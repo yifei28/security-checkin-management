@@ -5,7 +5,7 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // Don't retry on 401/403 - let auth context handle it
         if (error?.status === 401 || error?.status === 403) {
           return false;
@@ -23,7 +23,7 @@ export const queryClient = new QueryClient({
 });
 
 // Error handler for React Query
-export const queryErrorHandler = (error: any): void => {
+export const queryErrorHandler = (error: unknown): void => {
   console.error('[REACT QUERY ERROR]', error);
   
   // Handle auth errors globally

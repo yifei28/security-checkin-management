@@ -48,7 +48,7 @@ export const guardsApi = {
       console.log('[GUARDS API] Retrieved guards list');
       
       // The server should return a PaginatedResponse, but we need to handle the ApiResponse wrapper
-      const apiResponse = response.data as any;
+      const apiResponse = response.data as unknown;
       return apiResponse;
     } catch (error) {
       console.error('[GUARDS API] Failed to get guards:', error);

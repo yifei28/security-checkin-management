@@ -20,7 +20,7 @@ const defaultQueryOptions = {
   staleTime: 1000 * 60 * 2,
   
   // Retry failed requests 3 times with exponential backoff
-  retry: (failureCount: number, error: any) => {
+  retry: (failureCount: number, error: unknown) => {
     // Don't retry on 4xx errors (client errors)
     if (error?.response?.status >= 400 && error?.response?.status < 500) {
       return false;
@@ -44,7 +44,7 @@ const defaultQueryOptions = {
  */
 const defaultMutationOptions = {
   // Retry mutations once (for network errors only)
-  retry: (failureCount: number, error: any) => {
+  retry: (failureCount: number, error: unknown) => {
     // Don't retry client errors (4xx)
     if (error?.response?.status >= 400 && error?.response?.status < 500) {
       return false;

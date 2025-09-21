@@ -47,7 +47,7 @@ export const sitesKeys = {
   summaries: () => [...sitesKeys.summary()] as const,
   summaryDetail: (id: string) => [...sitesKeys.summary(), id] as const,
   byGuard: (guardId: string) => [...sitesKeys.all, 'by-guard', guardId] as const,
-  inArea: (bounds: { northEast: any; southWest: any }) => 
+  inArea: (bounds: { northEast: unknown; southWest: unknown }) => 
     [...sitesKeys.all, 'in-area', bounds] as const,
   nearest: (location: { lat: number; lng: number }, limit?: number) => 
     [...sitesKeys.all, 'nearest', location, limit] as const,
@@ -89,7 +89,7 @@ export const dashboardKeys = {
   statsRange: (dateRange?: { startDate: string; endDate: string }) => 
     [...dashboardKeys.stats(), dateRange] as const,
   todayStats: () => [...dashboardKeys.all, 'today'] as const,
-  trends: (params: { period: string; dateRange: any; groupBy?: string }) => 
+  trends: (params: { period: string; dateRange: unknown; groupBy?: string }) => 
     [...dashboardKeys.all, 'trends', params] as const,
   heatmap: (dateRange: { startDate: string; endDate: string }) => 
     [...dashboardKeys.all, 'heatmap', dateRange] as const,
@@ -104,7 +104,7 @@ export const dashboardKeys = {
  */
 export const reportsKeys = {
   all: ['reports'] as const,
-  attendance: (params: { dateRange: any; guardIds?: string[]; siteIds?: string[] }) => 
+  attendance: (params: { dateRange: unknown; guardIds?: string[]; siteIds?: string[] }) => 
     [...reportsKeys.all, 'attendance', params] as const,
 } as const;
 
@@ -142,7 +142,7 @@ export const getInvalidationKey = (entityType: keyof QueryKeys) => {
 /**
  * Utility type for extracting query key from factory functions
  */
-export type InferQueryKey<T> = T extends (...args: any[]) => infer K ? K : never;
+export type InferQueryKey<T> = T extends (...args: unknown[]) => infer K ? K : never;
 
 /**
  * Common query key patterns for reusable components
@@ -151,7 +151,7 @@ export const commonQueryKeys = {
   /**
    * Paginated list query key
    */
-  paginatedList: (entity: string, params: { page?: number; pageSize?: number; [key: string]: any }) =>
+  paginatedList: (entity: string, params: { page?: number; pageSize?: number; [key: string]: unknown }) =>
     [entity, 'paginated', params] as const,
     
   /**

@@ -95,7 +95,7 @@ export const useCurrentUser = () => {
     gcTime: 1000 * 60 * 10,
     
     // Retry on failure (network errors only)
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry on 401/403 errors
       if (error?.response?.status === 401 || error?.response?.status === 403) {
         return false;

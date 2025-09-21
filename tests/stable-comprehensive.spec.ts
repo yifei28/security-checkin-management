@@ -62,7 +62,7 @@ test.describe('稳定的综合功能测试', () => {
           expect(user.username).toBe(TEST_CREDENTIALS.username);
           expect(typeof user.createdAt).toBe('string'); // 应该是字符串，不是Date对象
         }
-      } catch (e) {
+      } catch (_e) {
         console.log('LocalStorage 访问受限，跳过数据验证');
       }
 

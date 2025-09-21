@@ -224,7 +224,7 @@ export default function DateFilterDebug() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {debugInfo.recordTests?.map((record: any, index: number) => (
+            {debugInfo.recordTests?.map((record: unknown, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
                   <div className="font-medium">{record.description}</div>

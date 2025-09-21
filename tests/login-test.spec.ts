@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('登录功能测试', () => {
   test('测试不同的登录凭据', async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe('登录功能测试', () => {
   });
 
   test('检查登录API调用', async ({ page }) => {
-    const apiRequests: any[] = [];
+    const apiRequests: unknown[] = [];
     
     // 监听所有网络请求
     page.on('request', request => {

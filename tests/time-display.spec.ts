@@ -6,7 +6,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     await context.addInitScript(() => {
       // Mock timezone to China/Shanghai
       Object.defineProperty(Intl, 'DateTimeFormat', {
-        value: function(...args: any[]) {
+        value: function(...args: unknown[]) {
           if (args[1] && !args[1].timeZone) {
             args[1].timeZone = 'Asia/Shanghai';
           }
@@ -16,7 +16,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     });
   });
 
-  test('验证签到记录页面时间显示格式', async ({ page }) => {
+  test('验证签到记录页面时间显示格式', async ({ }) => {
     // 导航到签到记录页面
     await page.goto('http://localhost:5173/admin/checkins');
 
@@ -43,7 +43,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     expect(await timeHeaders.count()).toBeGreaterThan(0);
   });
 
-  test('验证时间范围筛选器功能', async ({ page }) => {
+  test('验证时间范围筛选器功能', async ({ }) => {
     // 导航到签到记录页面
     await page.goto('http://localhost:5173/admin/checkins');
 
@@ -113,7 +113,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     }
   });
 
-  test('验证API请求包含正确的时区参数', async ({ page }) => {
+  test('验证API请求包含正确的时区参数', async ({ }) => {
     let apiRequestUrl = '';
     
     // 监听API请求
@@ -158,7 +158,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     }
   });
 
-  test('验证页面加载后的数据显示', async ({ page }) => {
+  test('验证页面加载后的数据显示', async ({ }) => {
     // 导航到签到记录页面
     await page.goto('http://localhost:5173/admin/checkins');
 
@@ -204,7 +204,7 @@ test.describe('签到记录时间显示和时间范围测试', () => {
     console.log('加载状态元素数量:', loadingElements);
   });
 
-  test('时间显示一致性检查', async ({ page }) => {
+  test('时间显示一致性检查', async ({ }) => {
     // Mock当前时间为固定值以便测试
     const mockTime = new Date('2025-01-15T10:30:00+08:00');
     

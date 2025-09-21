@@ -227,7 +227,7 @@ export class ApiClient {
    */
   addRequestInterceptor(
     fulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>,
-    rejected?: (error: any) => any
+    rejected?: (error: unknown) => unknown
   ): number {
     return this.instance.interceptors.request.use(fulfilled, rejected);
   }
@@ -237,7 +237,7 @@ export class ApiClient {
    */
   addResponseInterceptor(
     fulfilled: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>,
-    rejected?: (error: any) => any
+    rejected?: (error: unknown) => unknown
   ): number {
     return this.instance.interceptors.response.use(fulfilled, rejected);
   }
@@ -306,7 +306,7 @@ export { apiClient as axiosInstance };
 /**
  * Type guard to check if a response is a valid API response
  */
-export function isValidApiResponse<T>(response: any): response is ApiResponse<T> {
+export function isValidApiResponse<T>(response: unknown): response is ApiResponse<T> {
   return (
     response &&
     typeof response === 'object' &&

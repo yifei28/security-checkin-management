@@ -12,7 +12,7 @@ test.describe('签到记录时间功能最终验证测试', () => {
     await context.addInitScript(() => {
       // 确保时区设置正确
       Object.defineProperty(Intl, 'DateTimeFormat', {
-        value: function(...args: any[]) {
+        value: function(...args: unknown[]) {
           if (!args[1]) args[1] = {};
           args[1].timeZone = 'Asia/Shanghai';
           return new (Intl.DateTimeFormat as any)(...args);
@@ -35,8 +35,8 @@ test.describe('签到记录时间功能最终验证测试', () => {
   });
 
   test('验证API请求包含正确的时区和分页参数', async ({ page }) => {
-    const apiRequests: any[] = [];
-    const apiResponses: any[] = [];
+    const apiRequests: unknown[] = [];
+    const apiResponses: unknown[] = [];
     
     // 使用Context7推荐的网络监听最佳实践
     page.on('request', request => {
