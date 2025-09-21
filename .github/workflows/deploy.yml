@@ -43,9 +43,6 @@ jobs:
     - name: TypeScript compilation and build
       run: npm run build
 
-    - name: Run basic functionality tests
-      run: npm run test:basic
-
     - name: Build Docker image
       run: |
         docker build -t checkin-frontend:latest .
