@@ -163,7 +163,7 @@ export const cacheUtils = {
   /**
    * Prefetch data for better UX
    */
-  prefetchQuery: (queryKey: unknown[], queryFn: () => Promise<any>) => {
+  prefetchQuery: (queryKey: unknown[], queryFn: () => Promise<unknown>) => {
     return queryClient.prefetchQuery({
       queryKey,
       queryFn,

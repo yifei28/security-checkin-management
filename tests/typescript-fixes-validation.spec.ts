@@ -241,7 +241,7 @@ test.describe('TypeScript Fixes Validation', () => {
         try {
           const download = await downloadPromise;
           expect(download.suggestedFilename()).toMatch(/\.(csv|xlsx)$/);
-        } catch (_error) {
+        } catch {
           // Download might not work in test environment, but no type errors should occur
         }
 

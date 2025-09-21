@@ -148,7 +148,7 @@ test.describe('API直接测试 - 绕过登录验证时间功能', () => {
     console.log('页面内容预览:', bodyText.substring(0, 500));
 
     // 查找时间相关的文本
-    const timeRelatedTexts = bodyText.match(/\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}:\d{2}|上午|下午|签到时间|时间筛选/g) || [];
+    const timeRelatedTexts = bodyText.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}:\d{2}|上午|下午|签到时间|时间筛选/g) || [];
     
     console.log('找到的时间相关文本:');
     timeRelatedTexts.forEach((text, index) => {

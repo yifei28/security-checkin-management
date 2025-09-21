@@ -15,12 +15,21 @@ This is a React + TypeScript + Vite frontend application for a check-in manageme
 - **Lint code**: `npm run lint`
 - **Preview production build**: `npm run preview`
 
-### Testing and Quality Assurance
-- **End-to-End Tests**: `npx playwright test` - 20+ comprehensive test scenarios in `tests/` directory
-- **Run Single Test**: `npx playwright test [test-name].spec.ts`
-- **Test UI Mode**: `npx playwright test --ui` for interactive test debugging
-- **Type Checking**: TypeScript compilation occurs during build process
-- **Error Boundaries**: Global error handling via `APIErrorBoundary` component
+### Testing Commands
+- **All Tests**: `npm test` or `npx playwright test` - 25+ comprehensive test scenarios
+- **Single Test**: `npx playwright test [test-name].spec.ts`
+- **Test UI Mode**: `npm run test:ui` - Interactive test debugging
+- **Headed Mode**: `npm run test:headed` - Watch tests run in browser
+- **CI Tests**: `npm run test:ci` - Pre-push validation tests
+- **Basic Tests**: `npm run test:basic` - Core functionality tests
+- **Pre-push Check**: `npm run pre-push` - Full validation (lint + build + test)
+
+### Deployment Commands
+- **Docker Build**: `docker build -t checkin-frontend:latest .`
+- **Docker Compose**: `docker-compose up -d --build`
+- **Production Deploy**: `./deploy.sh --update --clean`
+- **Local Deploy**: `./deploy.sh`
+- **Health Check**: Check `http://localhost:3000` after deployment
 
 ### shadcn/ui Commands
 
@@ -222,6 +231,34 @@ export default {
 - Config path in `components.json` must be empty for v4
 - PostCSS plugin is required for Vite to process Tailwind v4
 
+## CI/CD and Deployment Architecture
+
+### GitHub Actions Pipeline
+- **Triggered on**: Push to `main` branch and pull requests
+- **CI Stage**: ESLint → TypeScript compilation → Build → Basic tests → Docker build
+- **CD Stage**: SSH deployment to production server using `deploy.sh`
+- **Artifacts**: Build artifacts uploaded for debugging
+
+### Production Deployment
+- **Container**: Docker with nginx serving static files
+- **Port**: Exposed on port 3000 (container port 80)
+- **Health Checks**: Automated health monitoring with retry logic
+- **Domain**: https://duhaosecurity.com
+- **Timezone**: Configured for Asia/Shanghai
+
+### Deployment Script Features (`deploy.sh`)
+- **Code Updates**: Automatic git pull with fallback strategies
+- **Container Management**: Graceful stop/start with cleanup options
+- **Health Monitoring**: Multi-endpoint health checks with detailed logging
+- **Rollback Support**: Automatic cleanup on deployment failure
+- **Usage**: `./deploy.sh [--update] [--clean]`
+
+### Container Architecture
+- **Multi-stage Build**: Node.js build → nginx production image
+- **Base Image**: nginx:alpine for minimal footprint
+- **Build Process**: npm ci → build → static file serving
+- **Configuration**: React Router support with fallback to index.html
+
 ## Configuration Files
 - `vite.config.ts`: Vite build configuration with path aliases and API proxy to localhost:8080
 - `tailwind.config.js`: Minimal Tailwind CSS v4 configuration
@@ -232,6 +269,9 @@ export default {
 - `playwright.config.ts`: E2E test configuration with auto-start dev server
 - `Dockerfile`: Multi-stage build (Node.js 20 → nginx production)
 - `nginx.conf`: Production nginx config with React Router support and caching
+- `docker-compose.yml`: Container orchestration with health checks
+- `deploy.sh`: Production deployment script with rollback capabilities
+- `.github/workflows/deploy.yml`: CI/CD pipeline for automated testing and deployment
 
 ## Development Guidelines
 
@@ -239,6 +279,13 @@ export default {
 1. Install component: `npx shadcn@latest add [component-name]`
 2. Import in your file: `import { ComponentName } from "@/components/ui/component-name"`
 3. Use the `cn()` utility for class merging: `import { cn } from "@/lib/utils"`
+
+### Code Quality Standards
+- **ESLint**: Zero errors and warnings enforced (recently achieved perfect state)
+- **TypeScript**: Strict type checking enabled, avoid `any` types (use `unknown` instead)
+- **React Hooks**: Proper dependency arrays required, use `useCallback` for stable references
+- **Fast Refresh**: Components and utilities properly separated for optimal development experience
+- **Import Organization**: Consistent import ordering and absolute path usage via `@/` alias
 
 ### UI Design Principles
 - **Consistency**: Use shadcn/ui components throughout the application
@@ -286,6 +333,28 @@ export default {
   </TableBody>
 </Table>
 ```
+
+## Testing Strategy
+
+### Test Categories
+- **Basic Functionality**: Core login, navigation, and CRUD operations
+- **Integration Tests**: Guard-site relationships, API interactions, data flow
+- **Time Zone Tests**: Beijing time handling, date filtering, time display consistency
+- **Performance Tests**: Dashboard metrics, checkin analytics, optimization validation
+- **CI Tests**: Pre-push validation ensuring deployable state
+
+### Key Test Files
+- `basic-functionality.spec.ts`: Core application functionality
+- `pre-push-check.spec.ts`: CI validation before deployment
+- `typescript-fixes-core-validation.spec.ts`: Type safety verification
+- `comprehensive-time-test.spec.ts`: Time zone and filtering validation
+- `guard-site-relationship.spec.ts`: Business logic validation
+
+### Test Configuration
+- **Auto-start**: Development server automatically starts for tests
+- **Mock Data**: Authentication bypass for testing with mock tokens
+- **Time Zone**: Tests configured for Asia/Shanghai timezone
+- **Browser**: Chromium headless for CI, headed mode available for debugging
 
 ## Critical Business Logic
 

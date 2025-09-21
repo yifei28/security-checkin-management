@@ -215,7 +215,7 @@ test.describe('Security Check-in Management System', () => {
 
     test('should create a new guard successfully', async ({ page }) => {
       // Get initial guard count
-      const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
+      // const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
       
       await page.click('button:has-text("添加保安")');
       
@@ -297,7 +297,7 @@ test.describe('Security Check-in Management System', () => {
     });
 
     test('should delete guard with confirmation', async ({ page }) => {
-      const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
+      // const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
       
       if (initialRowCount > 0) {
         const firstGuardRow = page.locator('[data-testid="guard-row"]').first();
@@ -355,7 +355,7 @@ test.describe('Security Check-in Management System', () => {
     });
 
     test('should create a new site successfully', async ({ page }) => {
-      const initialRowCount = await page.locator('[data-testid="site-row"]').count();
+      // const initialRowCount = await page.locator('[data-testid="site-row"]').count();
       
       await page.click('button:has-text("添加站点")');
       
@@ -568,7 +568,7 @@ test.describe('Security Check-in Management System', () => {
       // Get initial metric value
       const todayCheckinMetric = page.locator('[data-testid="today-checkins"]');
       if (await todayCheckinMetric.count() > 0) {
-        const initialValue = await todayCheckinMetric.textContent();
+        // const initialValue = await todayCheckinMetric.textContent();
         
         // Wait for potential updates
         await page.waitForTimeout(5000);

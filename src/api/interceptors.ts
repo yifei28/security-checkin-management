@@ -23,7 +23,7 @@ export const requestInterceptor = (config: InternalAxiosRequestConfig): Internal
     if (token) {
       // Add Authorization header with Bearer token if token exists
       if (!config.headers) {
-        config.headers = {} as any;
+        config.headers = {} as Record<string, string>;
       }
       config.headers.Authorization = `Bearer ${token}`;
       
@@ -55,7 +55,7 @@ export const requestInterceptor = (config: InternalAxiosRequestConfig): Internal
  * Request error interceptor
  * Handles errors that occur before the request is sent
  */
-export const requestErrorInterceptor = (error: unknown): Promise<any> => {
+export const requestErrorInterceptor = (error: unknown): Promise<never> => {
   console.error('[API] Request interceptor error:', error);
   return Promise.reject(error);
 };
@@ -96,7 +96,7 @@ export const responseInterceptor = (response: AxiosResponse): AxiosResponse => {
  * Response error interceptor
  * Handles HTTP errors, especially 401 unauthorized responses
  */
-export const responseErrorInterceptor = (error: AxiosError): Promise<any> => {
+export const responseErrorInterceptor = (error: AxiosError): Promise<never> => {
   try {
     const { response, config } = error;
     

@@ -21,7 +21,7 @@ export const authKeys = {
 export const guardsKeys = {
   all: ['guards'] as const,
   lists: () => [...guardsKeys.all, 'list'] as const,
-  list: (params?: Record<string, any>) => [...guardsKeys.lists(), params] as const,
+  list: (params?: Record<string, unknown>) => [...guardsKeys.lists(), params] as const,
   details: () => [...guardsKeys.all, 'detail'] as const,
   detail: (id: string) => [...guardsKeys.details(), id] as const,
   summary: () => [...guardsKeys.all, 'summary'] as const,
@@ -30,7 +30,7 @@ export const guardsKeys = {
   bySite: (siteId: string) => [...guardsKeys.all, 'by-site', siteId] as const,
   availability: (dateRange?: { startDate: string; endDate: string }) => 
     [...guardsKeys.all, 'availability', dateRange] as const,
-  search: (query: string, filters?: Record<string, any>) => 
+  search: (query: string, filters?: Record<string, unknown>) =>
     [...guardsKeys.all, 'search', query, filters] as const,
 } as const;
 
@@ -40,7 +40,7 @@ export const guardsKeys = {
 export const sitesKeys = {
   all: ['sites'] as const,
   lists: () => [...sitesKeys.all, 'list'] as const,
-  list: (params?: Record<string, any>) => [...sitesKeys.lists(), params] as const,
+  list: (params?: Record<string, unknown>) => [...sitesKeys.lists(), params] as const,
   details: () => [...sitesKeys.all, 'detail'] as const,
   detail: (id: string) => [...sitesKeys.details(), id] as const,
   summary: () => [...sitesKeys.all, 'summary'] as const,
@@ -53,7 +53,7 @@ export const sitesKeys = {
     [...sitesKeys.all, 'nearest', location, limit] as const,
   checkInStats: (siteId: string, dateRange: { startDate: string; endDate: string }) => 
     [...sitesKeys.all, 'checkin-stats', siteId, dateRange] as const,
-  search: (query: string, filters?: Record<string, any>) => 
+  search: (query: string, filters?: Record<string, unknown>) =>
     [...sitesKeys.all, 'search', query, filters] as const,
 } as const;
 
@@ -63,7 +63,7 @@ export const sitesKeys = {
 export const checkinsKeys = {
   all: ['checkins'] as const,
   lists: () => [...checkinsKeys.all, 'list'] as const,
-  list: (params?: Record<string, any>) => [...checkinsKeys.lists(), params] as const,
+  list: (params?: Record<string, unknown>) => [...checkinsKeys.lists(), params] as const,
   details: () => [...checkinsKeys.all, 'detail'] as const,
   detail: (id: string) => [...checkinsKeys.details(), id] as const,
   byGuard: (guardId: string, dateRange?: { startDate: string; endDate: string }) => 
@@ -74,7 +74,7 @@ export const checkinsKeys = {
   summary: () => [...checkinsKeys.all, 'summary'] as const,
   summaryRange: (dateRange: { startDate: string; endDate: string }, groupBy?: string) => 
     [...checkinsKeys.summary(), dateRange, groupBy] as const,
-  search: (query: string, filters?: Record<string, any>) => 
+  search: (query: string, filters?: Record<string, unknown>) =>
     [...checkinsKeys.all, 'search', query, filters] as const,
   anomalies: (dateRange: { startDate: string; endDate: string }) => 
     [...checkinsKeys.all, 'anomalies', dateRange] as const,
@@ -157,7 +157,7 @@ export const commonQueryKeys = {
   /**
    * Search query key
    */
-  search: (entity: string, query: string, filters?: Record<string, any>) =>
+  search: (entity: string, query: string, filters?: Record<string, unknown>) =>
     [entity, 'search', { query, filters }] as const,
     
   /**

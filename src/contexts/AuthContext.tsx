@@ -292,7 +292,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return false;
     }
-  }, [state.isRefreshing, state.user]);
+  }, [state.isRefreshing, state.user, scheduleTokenRefresh, logoutAction]);
 
   // Schedule token refresh based on token expiry
   const scheduleTokenRefresh = useCallback((token: string) => {
@@ -450,11 +450,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorData.msg || errorMessage;
-        } catch (_jsonError) {
+        } catch {
           try {
             const errorText = await response.text();
             errorMessage = errorText || errorMessage;
-          } catch (_textError) {
+          } catch {
             // Use default message
           }
         }
@@ -533,7 +533,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const logoutAction = (): void => {
+  const logoutAction = useCallback((): void => {
     console.log('[AUTH] Performing logout');
     
     // Clear any pending refresh timeout
@@ -547,7 +547,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     logout(); // Clear localStorage
     dispatch({ type: 'LOGOUT' });
-  };
+  }, [dispatch]);
 
   const clearErrorAction = (): void => {
     dispatch({ type: 'CLEAR_ERROR' });
@@ -627,6 +627,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // Custom Hook
 // ===================================================================
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   
@@ -641,16 +642,19 @@ export function useAuth(): AuthContextType {
 // Convenience Hooks
 // ===================================================================
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUser(): AuthUser | null {
   const { user } = useAuth();
   return user;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useIsAuthenticated(): boolean {
   const { isAuthenticated } = useAuth();
   return isAuthenticated;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuthLoading(): boolean {
   const { isLoading } = useAuth();
   return isLoading;

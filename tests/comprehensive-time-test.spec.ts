@@ -12,7 +12,7 @@ test.describe('签到记录时间功能完整测试', () => {
           } else {
             args[1] = { timeZone: 'Asia/Shanghai' };
           }
-          return new (Intl.DateTimeFormat as any)(...args);
+          return new (Intl.DateTimeFormat as unknown as new (...args: unknown[]) => Intl.DateTimeFormat)(...args);
         }
       });
     });
@@ -76,8 +76,8 @@ test.describe('签到记录时间功能完整测试', () => {
       await page.waitForTimeout(2000);
       
       // 检查表格中的时间显示
-      const timeCells = await page.locator('td').filter({ 
-        hasText: /\d{4}\/\d{1,2}\/\d{1,2}|\d{1,2}:\d{2}|上午|下午/ 
+      const timeCells = await page.locator('td').filter({
+        hasText: /\d{4}\/\d{1,2}\/\d{1,2}|\d{1,2}:\d{2}|上午|下午/
       });
       const timeCount = await timeCells.count();
       
@@ -301,7 +301,7 @@ test.describe('签到记录时间功能完整测试', () => {
     // 收集页面中所有时间显示
     const allTextContent = await page.locator('*').allTextContents();
     const timeTexts = allTextContent.filter(text => 
-      text.match(/\d{4}[\/-]\d{1,2}[\/-]\d{1,2}/) ||
+      text.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}/) ||
       text.match(/\d{1,2}:\d{2}/) ||
       text.includes('上午') ||
       text.includes('下午')

@@ -15,7 +15,7 @@ test.describe('签到记录时间功能最终验证测试', () => {
         value: function(...args: unknown[]) {
           if (!args[1]) args[1] = {};
           args[1].timeZone = 'Asia/Shanghai';
-          return new (Intl.DateTimeFormat as any)(...args);
+          return new (Intl.DateTimeFormat as unknown as new (...args: unknown[]) => Intl.DateTimeFormat)(...args);
         }
       });
     });
@@ -273,7 +273,7 @@ test.describe('签到记录时间功能最终验证测试', () => {
 
     // 检查页面中的时间显示
     const timeElements = await page.locator('*').filter({ 
-      hasText: /\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}:\d{2}|上午|下午|AM|PM/ 
+      hasText: /\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}:\d{2}|上午|下午|AM|PM/ 
     }).allTextContents();
 
     console.log('\n=== 时间显示验证 ===');

@@ -29,27 +29,27 @@ export function ErrorBoundaryTest({ onError }: ErrorBoundaryTestProps) {
     switch (type) {
       case 'network':
         error = new Error('Network Error: Failed to fetch data from server');
-        (error as any).code = 'NETWORK_ERROR';
+        (error as Error & { code?: string }).code = 'NETWORK_ERROR';
         break;
         
       case 'auth':
         error = new Error('Unauthorized: Authentication token has expired');
-        (error as any).response = { status: 401 };
+        (error as Error & { response?: { status: number } }).response = { status: 401 };
         break;
         
       case 'server':
         error = new Error('Internal Server Error: Database connection failed');
-        (error as any).response = { status: 500 };
+        (error as Error & { response?: { status: number } }).response = { status: 500 };
         break;
         
       case 'timeout':
         error = new Error('Request timeout: Server took too long to respond');
-        (error as any).code = 'ECONNABORTED';
+        (error as Error & { code?: string }).code = 'ECONNABORTED';
         break;
         
       case 'client':
         error = new Error('Bad Request: Invalid data format');
-        (error as any).response = { status: 400 };
+        (error as Error & { response?: { status: number } }).response = { status: 400 };
         break;
         
       case 'javascript':

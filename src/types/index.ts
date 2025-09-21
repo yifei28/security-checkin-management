@@ -643,12 +643,12 @@ export function isGuard(value: unknown): value is Guard {
     'photoUrl' in value &&
     'siteId' in value &&
     'role' in value &&
-    typeof (value as any).id === 'string' &&
-    typeof (value as any).name === 'string' &&
-    typeof (value as any).phoneNumber === 'string' &&
-    typeof (value as any).photoUrl === 'string' &&
-    ((value as any).siteId === null || typeof (value as any).siteId === 'string') &&
-    Object.values(GuardRole).includes((value as any).role)
+    typeof (value as unknown).id === 'string' &&
+    typeof (value as unknown).name === 'string' &&
+    typeof (value as unknown).phoneNumber === 'string' &&
+    typeof (value as unknown).photoUrl === 'string' &&
+    ((value as unknown).siteId === null || typeof (value as unknown).siteId === 'string') &&
+    Object.values(GuardRole).includes((value as unknown).role)
   );
 }
 
@@ -664,11 +664,11 @@ export function isSite(value: unknown): value is Site {
     'latitude' in value &&
     'longitude' in value &&
     'assignedGuardIds' in value &&
-    typeof (value as any).id === 'string' &&
-    typeof (value as any).name === 'string' &&
-    typeof (value as any).latitude === 'number' &&
-    typeof (value as any).longitude === 'number' &&
-    Array.isArray((value as any).assignedGuardIds)
+    typeof (value as unknown).id === 'string' &&
+    typeof (value as unknown).name === 'string' &&
+    typeof (value as unknown).latitude === 'number' &&
+    typeof (value as unknown).longitude === 'number' &&
+    Array.isArray((value as unknown).assignedGuardIds)
   );
 }
 
@@ -686,13 +686,13 @@ export function isCheckInRecord(value: unknown): value is CheckInRecord {
     'location' in value &&
     'faceImageUrl' in value &&
     'status' in value &&
-    typeof (value as any).id === 'string' &&
-    typeof (value as any).guardId === 'string' &&
-    typeof (value as any).siteId === 'string' &&
-    typeof (value as any).timestamp === 'string' &&
-    typeof (value as any).location === 'object' &&
-    typeof (value as any).faceImageUrl === 'string' &&
-    ['success', 'failed', 'pending'].includes((value as any).status)
+    typeof (value as unknown).id === 'string' &&
+    typeof (value as unknown).guardId === 'string' &&
+    typeof (value as unknown).siteId === 'string' &&
+    typeof (value as unknown).timestamp === 'string' &&
+    typeof (value as unknown).location === 'object' &&
+    typeof (value as unknown).faceImageUrl === 'string' &&
+    ['success', 'failed', 'pending'].includes((value as unknown).status)
   );
 }
 
@@ -708,11 +708,11 @@ export function isUser(value: unknown): value is User {
     'role' in value &&
     'createdAt' in value &&
     'isActive' in value &&
-    typeof (value as any).id === 'string' &&
-    typeof (value as any).username === 'string' &&
-    ['admin', 'superAdmin'].includes((value as any).role) &&
-    typeof (value as any).createdAt === 'string' &&
-    typeof (value as any).isActive === 'boolean'
+    typeof (value as unknown).id === 'string' &&
+    typeof (value as unknown).username === 'string' &&
+    ['admin', 'superAdmin'].includes((value as unknown).role) &&
+    typeof (value as unknown).createdAt === 'string' &&
+    typeof (value as unknown).isActive === 'boolean'
   );
 }
 
@@ -726,8 +726,8 @@ export function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
     'data' in value &&
     'success' in value &&
     'message' in value &&
-    typeof (value as any).success === 'boolean' &&
-    typeof (value as any).message === 'string'
+    typeof (value as unknown).success === 'boolean' &&
+    typeof (value as unknown).message === 'string'
   );
 }
 
@@ -839,12 +839,12 @@ export type ArrayElement<T> = T extends readonly (infer U)[] ? U : never;
 /**
  * Function parameter types utility
  */
-export type FunctionParams<T extends (...args: unknown[]) => any> = T extends (...args: infer P) => any ? P : never;
+export type FunctionParams<T extends (...args: unknown[]) => unknown> = T extends (...args: infer P) => unknown ? P : never;
 
 /**
  * Function return type utility
  */
-export type FunctionReturn<T extends (...args: unknown[]) => any> = T extends (...args: unknown[]) => infer R ? R : never;
+export type FunctionReturn<T extends (...args: unknown[]) => unknown> = T extends (...args: unknown[]) => infer R ? R : never;
 
 // ===================================================================
 // API Client Types

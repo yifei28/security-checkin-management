@@ -251,7 +251,7 @@ export const useCheckInPhoto = (checkInId: string) => {
     queryFn: (): Promise<ApiResponse<{ 
       photoUrl: string; 
       thumbnailUrl?: string; 
-      metadata?: Record<string, any>; 
+      metadata?: Record<string, unknown>; 
     }>> => checkinsApi.getCheckInPhoto(checkInId),
     
     // Photos don't change once uploaded
@@ -322,7 +322,7 @@ export const useCheckInAnomalies = (dateRange: {
       siteId: string;
       timestamp: string;
       description: string;
-      details: Record<string, any>;
+      details: Record<string, unknown>;
     }>>> => checkinsApi.getCheckInAnomalies(dateRange),
     
     staleTime: 1000 * 60 * 10, // 10 minutes

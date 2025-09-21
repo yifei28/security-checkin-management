@@ -129,7 +129,7 @@ export default function CheckinRecords() {
   };
 
   // Create paginated fetch function with filters (moved up for use in fetchCompleteStatistics)
-  const fetchRecordsWithPagination = async (paginationParams: PaginationParams, filters?: {
+  const fetchRecordsWithPagination = useCallback(async (paginationParams: PaginationParams, filters?: {
     dateRange?: 'today' | 'week' | 'month' | 'all';
     status?: CheckInStatus | 'all';
     guardId?: string;
@@ -216,7 +216,7 @@ export default function CheckinRecords() {
     }
     
     return request(`${BASE_URL}/api/checkin?${params}`);
-  };
+  }, []);
 
   // Extract statistics from API response - no longer need separate API call
   const extractStatisticsFromResponse = useCallback((response: ApiResponse<CheckInRecord>) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,10 +10,10 @@ type DateRange = 'today' | 'week' | 'month' | 'all';
 
 export default function DateFilterDebug() {
   const [dateFilter, setDateFilter] = useState<DateRange>('today');
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown>>({});
 
   // 复制前端的时间格式化逻辑
-  const formatLocalDateTime = (date: Date): string => {
+  const formatLocalDateTime = useCallback((date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -21,40 +21,43 @@ export default function DateFilterDebug() {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-  };
+  }, []);
 
-  const generateDebugInfo = (selectedRange: DateRange) => {
+  const generateDebugInfo = useCallback((selectedRange: DateRange) => {
     const now = new Date();
     let startDate = '';
     let endDate = '';
 
     if (selectedRange !== 'all') {
       switch (selectedRange) {
-        case 'today':
+        case 'today': {
           const today = new Date(now);
           today.setHours(0, 0, 0, 0);
           startDate = formatLocalDateTime(today);
-          
+
           const todayEnd = new Date(now);
           todayEnd.setHours(23, 59, 59, 999);
           endDate = formatLocalDateTime(todayEnd);
           break;
-          
-        case 'week':
+        }
+
+        case 'week': {
           const weekAgo = new Date(now);
           weekAgo.setDate(weekAgo.getDate() - 7);
           weekAgo.setHours(0, 0, 0, 0);
           startDate = formatLocalDateTime(weekAgo);
           endDate = formatLocalDateTime(now);
           break;
-          
-        case 'month':
+        }
+
+        case 'month': {
           const monthAgo = new Date(now);
           monthAgo.setDate(monthAgo.getDate() - 30);
           monthAgo.setHours(0, 0, 0, 0);
           startDate = formatLocalDateTime(monthAgo);
           endDate = formatLocalDateTime(now);
           break;
+        }
       }
     }
 
@@ -107,11 +110,11 @@ export default function DateFilterDebug() {
       apiParams: Object.fromEntries(params),
       recordTests
     };
-  };
+  }, [formatLocalDateTime]);
 
   useEffect(() => {
     setDebugInfo(generateDebugInfo(dateFilter));
-  }, [dateFilter]);
+  }, [dateFilter, generateDebugInfo]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

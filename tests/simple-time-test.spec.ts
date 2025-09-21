@@ -71,7 +71,7 @@ test.describe('签到记录页面基础测试', () => {
     // 查找任何包含时间信息的元素
     const allText = await page.locator('*').allTextContents();
     const timeRelatedTexts = allText.filter(text => 
-      text.match(/\d{4}[\/-]\d{1,2}[\/-]\d{1,2}/) || 
+      text.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}/) || 
       text.match(/\d{1,2}:\d{2}/) ||
       text.includes('签到') ||
       text.includes('时间')

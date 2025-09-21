@@ -12,7 +12,8 @@ const TEST_CREDENTIALS = {
   password: '11235813'
 };
 
-// const TEST_DATA = {
+/*
+const TEST_DATA = {
   guard: {
     name: '基本功能测试保安',
     phoneNumber: '13900000001'
@@ -24,6 +25,7 @@ const TEST_CREDENTIALS = {
     allowedRadius: '50'
   }
 };
+*/
 
 // 辅助函数：登录
 async function loginAsAdmin(page: Page): Promise<void> {

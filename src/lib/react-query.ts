@@ -77,16 +77,16 @@ export const apiFetch = async (url: string, options?: RequestInit) => {
 
   if (!response.ok) {
     const error = new Error(`API Error: ${response.status}`);
-    (error as any).status = response.status;
-    (error as any).response = response;
+    (error as unknown).status = response.status;
+    (error as unknown).response = response;
     
     // Try to get error message from response
     try {
       const errorData = await response.json();
-      (error as any).message = errorData.message || error.message;
+      (error as unknown).message = errorData.message || error.message;
     } catch {
       // If JSON parsing fails, use status text
-      (error as any).message = response.statusText || error.message;
+      (error as unknown).message = response.statusText || error.message;
     }
     
     throw error;

@@ -260,6 +260,7 @@ export function APIErrorBoundary({
 /**
  * HOC for wrapping components with API Error Boundary
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function withAPIErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   errorBoundaryProps?: Omit<APIErrorBoundaryProps, 'children'>
@@ -278,6 +279,7 @@ export function withAPIErrorBoundary<P extends object>(
 /**
  * Hook for manually triggering error boundary reset
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useErrorBoundaryReset() {
   const queryClient = useQueryClient();
 

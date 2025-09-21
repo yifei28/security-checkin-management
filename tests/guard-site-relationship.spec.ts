@@ -273,7 +273,7 @@ test.describe('Guard-Site Relationship and ID Type Consistency', () => {
     test('should handle mixed operations (create, edit, delete) without errors', async ({ page }) => {
       await navigateToGuards(page);
       
-      const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
+      // const initialRowCount = await page.locator('[data-testid="guard-row"]').count();
       
       // Create a test guard
       await page.click('button:has-text("添加保安")');
@@ -343,7 +343,7 @@ test.describe('Guard-Site Relationship and ID Type Consistency', () => {
     test('should handle backend responses with numeric IDs correctly', async ({ page }) => {
       // Mock API responses to return numeric IDs (simulating backend behavior)
       await page.route('**/api/guards**', async (route) => {
-        const url = route.request().url();
+        // const url = route.request().url();
         const method = route.request().method();
         
         if (method === 'POST') {
