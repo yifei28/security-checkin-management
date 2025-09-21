@@ -308,13 +308,13 @@ export { apiClient as axiosInstance };
  */
 export function isValidApiResponse<T>(response: unknown): response is ApiResponse<T> {
   return (
-    response &&
     typeof response === 'object' &&
+    response !== null &&
     'data' in response &&
     'success' in response &&
     'message' in response &&
-    typeof response.success === 'boolean' &&
-    typeof response.message === 'string'
+    typeof (response as ApiResponse<T>).success === 'boolean' &&
+    typeof (response as ApiResponse<T>).message === 'string'
   );
 }
 

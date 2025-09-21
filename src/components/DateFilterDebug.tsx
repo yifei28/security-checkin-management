@@ -8,9 +8,25 @@ import { Copy, Info, Calendar, Clock } from 'lucide-react';
 
 type DateRange = 'today' | 'week' | 'month' | 'all';
 
+interface RecordTest {
+  description: string;
+  timestamp: string;
+  recordTime: string;
+  shouldInclude: boolean;
+}
+
+interface DebugInfo {
+  currentTime: string;
+  startDate: string;
+  endDate: string;
+  apiUrl: string;
+  apiParams: Record<string, string>;
+  recordTests: RecordTest[];
+}
+
 export default function DateFilterDebug() {
   const [dateFilter, setDateFilter] = useState<DateRange>('today');
-  const [debugInfo, setDebugInfo] = useState<Record<string, unknown>>({});
+  const [debugInfo, setDebugInfo] = useState<Partial<DebugInfo>>({});
 
   // 复制前端的时间格式化逻辑
   const formatLocalDateTime = useCallback((date: Date): string => {
@@ -189,7 +205,7 @@ export default function DateFilterDebug() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(debugInfo.apiUrl)}
+              onClick={() => copyToClipboard(debugInfo.apiUrl || '')}
             >
               <Copy className="h-4 w-4 mr-2" />
               复制URL
@@ -210,7 +226,7 @@ export default function DateFilterDebug() {
               {Object.entries(debugInfo.apiParams || {}).map(([key, value]) => (
                 <div key={key} className="flex justify-between items-center py-1">
                   <span className="font-mono text-sm">{key}:</span>
-                  <Badge variant="secondary" className="font-mono text-xs">{value as string}</Badge>
+                  <Badge variant="secondary" className="font-mono text-xs">{String(value)}</Badge>
                 </div>
               ))}
             </div>
@@ -227,7 +243,7 @@ export default function DateFilterDebug() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {debugInfo.recordTests?.map((record: unknown, index: number) => (
+            {debugInfo.recordTests?.map((record: RecordTest, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
                   <div className="font-medium">{record.description}</div>

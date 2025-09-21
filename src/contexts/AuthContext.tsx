@@ -292,7 +292,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return false;
     }
-  }, [state.isRefreshing, state.user, scheduleTokenRefresh, logoutAction]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isRefreshing, state.user]);
 
   // Schedule token refresh based on token expiry
   const scheduleTokenRefresh = useCallback((token: string) => {

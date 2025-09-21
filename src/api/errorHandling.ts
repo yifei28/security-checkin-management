@@ -1,12 +1,74 @@
 /**
  * React Query Error Handling Integration
- * 
+ *
  * Utilities for handling API errors in conjunction with React Query
  * and the APIErrorBoundary component.
  */
 
 import { QueryCache, MutationCache } from '@tanstack/react-query';
 import { queryClient } from './queryClient';
+
+/**
+ * Type guard to check if error has a response property
+ */
+function hasResponse(error: unknown): error is { response: { status: number } } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response: unknown }).response === 'object' &&
+    (error as { response: unknown }).response !== null &&
+    'status' in (error as { response: { status: unknown } }).response
+  );
+}
+
+/**
+ * Type guard to check if error has a message property
+ */
+function hasMessage(error: unknown): error is { message: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+}
+
+/**
+ * Type guard to check if error has a code property
+ */
+function hasCode(error: unknown): error is { code: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'string'
+  );
+}
+
+/**
+ * Type guard to check if error has a name property
+ */
+function hasName(error: unknown): error is { name: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    typeof (error as { name: unknown }).name === 'string'
+  );
+}
+
+/**
+ * Type guard to check if error has a stack property
+ */
+function hasStack(error: unknown): error is { stack: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'stack' in error &&
+    typeof (error as { stack: unknown }).stack === 'string'
+  );
+}
 
 /**
  * Error types for classification
@@ -36,50 +98,50 @@ export interface EnhancedAPIError extends Error {
  */
 export function classifyError(error: unknown): APIErrorType {
   // Network connectivity errors
-  if (error.code === 'NETWORK_ERROR' || 
-      error.message.includes('Network Error') ||
-      error.message.includes('fetch') ||
+  if ((hasCode(error) && error.code === 'NETWORK_ERROR') ||
+      (hasMessage(error) && (error.message.includes('Network Error') || error.message.includes('fetch'))) ||
       !navigator.onLine) {
     return 'NETWORK_ERROR';
   }
 
   // Timeout errors
-  if (error.code === 'ECONNABORTED' || 
-      error.message.includes('timeout') ||
-      error.message.includes('TIMEOUT')) {
+  if ((hasCode(error) && error.code === 'ECONNABORTED') ||
+      (hasMessage(error) && (error.message.includes('timeout') || error.message.includes('TIMEOUT')))) {
     return 'TIMEOUT_ERROR';
   }
 
   // HTTP status-based classification
-  if (error.response?.status) {
+  if (hasResponse(error)) {
     const status = error.response.status;
-    
+
     if (status === 401 || status === 403) {
       return 'AUTH_ERROR';
     }
-    
+
     if (status >= 400 && status < 500) {
       return 'CLIENT_ERROR';
     }
-    
+
     if (status >= 500) {
       return 'SERVER_ERROR';
     }
   }
 
   // Authentication-related errors
-  if (error.message.includes('401') || 
+  if (hasMessage(error) && (
+      error.message.includes('401') ||
       error.message.includes('Unauthorized') ||
       error.message.includes('Authentication') ||
-      error.message.includes('Invalid token')) {
+      error.message.includes('Invalid token'))) {
     return 'AUTH_ERROR';
   }
 
   // Server errors
-  if (error.message.includes('500') || 
+  if (hasMessage(error) && (
+      error.message.includes('500') ||
       error.message.includes('502') ||
       error.message.includes('503') ||
-      error.message.includes('504')) {
+      error.message.includes('504'))) {
     return 'SERVER_ERROR';
   }
 
@@ -90,28 +152,28 @@ export function classifyError(error: unknown): APIErrorType {
  * Transform API errors into enhanced error objects
  */
 export function transformAPIError(
-  error: unknown, 
+  error: unknown,
   context?: Record<string, unknown>
 ): EnhancedAPIError {
   const type = classifyError(error);
   const timestamp = new Date().toISOString();
 
   const enhancedError: EnhancedAPIError = {
-    name: error.name || 'APIError',
-    message: error.message || 'An API error occurred',
+    name: hasName(error) ? error.name : 'APIError',
+    message: hasMessage(error) ? error.message : 'An API error occurred',
     type,
     timestamp,
     context,
-    stack: error.stack,
+    stack: hasStack(error) ? error.stack : undefined,
   };
 
   // Add status code if available
-  if (error.response?.status) {
+  if (hasResponse(error)) {
     enhancedError.status = error.response.status;
   }
 
   // Add error code if available
-  if (error.code) {
+  if (hasCode(error)) {
     enhancedError.code = error.code;
   }
 

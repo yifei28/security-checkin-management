@@ -66,7 +66,7 @@ export function useDashboardMetrics() {
         return await apiFetch(`${BASE_URL}/api/dashboard/metrics`);
       } catch (error: unknown) {
         // If API is not available, return mock data
-        console.log('[DASHBOARD] API not available, using mock data:', error.message);
+        console.log('[DASHBOARD] API not available, using mock data:', error instanceof Error ? error.message : 'Unknown error');
         
         // 生成实际的安全警报逻辑
         const generateSecurityAlerts = (): SecurityAlert[] => {

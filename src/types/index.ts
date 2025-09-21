@@ -643,12 +643,12 @@ export function isGuard(value: unknown): value is Guard {
     'photoUrl' in value &&
     'siteId' in value &&
     'role' in value &&
-    typeof (value as unknown).id === 'string' &&
-    typeof (value as unknown).name === 'string' &&
-    typeof (value as unknown).phoneNumber === 'string' &&
-    typeof (value as unknown).photoUrl === 'string' &&
-    ((value as unknown).siteId === null || typeof (value as unknown).siteId === 'string') &&
-    Object.values(GuardRole).includes((value as unknown).role)
+    typeof (value as Guard).id === 'string' &&
+    typeof (value as Guard).name === 'string' &&
+    typeof (value as Guard).phoneNumber === 'string' &&
+    typeof (value as Guard).photoUrl === 'string' &&
+    ((value as Guard).siteId === null || typeof (value as Guard).siteId === 'string') &&
+    Object.values(GuardRole).includes((value as Guard).role)
   );
 }
 
@@ -664,11 +664,11 @@ export function isSite(value: unknown): value is Site {
     'latitude' in value &&
     'longitude' in value &&
     'assignedGuardIds' in value &&
-    typeof (value as unknown).id === 'string' &&
-    typeof (value as unknown).name === 'string' &&
-    typeof (value as unknown).latitude === 'number' &&
-    typeof (value as unknown).longitude === 'number' &&
-    Array.isArray((value as unknown).assignedGuardIds)
+    typeof (value as Site).id === 'string' &&
+    typeof (value as Site).name === 'string' &&
+    typeof (value as Site).latitude === 'number' &&
+    typeof (value as Site).longitude === 'number' &&
+    Array.isArray((value as Site).assignedGuardIds)
   );
 }
 
@@ -686,13 +686,13 @@ export function isCheckInRecord(value: unknown): value is CheckInRecord {
     'location' in value &&
     'faceImageUrl' in value &&
     'status' in value &&
-    typeof (value as unknown).id === 'string' &&
-    typeof (value as unknown).guardId === 'string' &&
-    typeof (value as unknown).siteId === 'string' &&
-    typeof (value as unknown).timestamp === 'string' &&
-    typeof (value as unknown).location === 'object' &&
-    typeof (value as unknown).faceImageUrl === 'string' &&
-    ['success', 'failed', 'pending'].includes((value as unknown).status)
+    typeof (value as CheckInRecord).id === 'string' &&
+    typeof (value as CheckInRecord).guardId === 'string' &&
+    typeof (value as CheckInRecord).siteId === 'string' &&
+    typeof (value as CheckInRecord).timestamp === 'string' &&
+    typeof (value as CheckInRecord).location === 'object' &&
+    typeof (value as CheckInRecord).faceImageUrl === 'string' &&
+    ['success', 'failed', 'pending'].includes((value as CheckInRecord).status)
   );
 }
 
@@ -708,11 +708,11 @@ export function isUser(value: unknown): value is User {
     'role' in value &&
     'createdAt' in value &&
     'isActive' in value &&
-    typeof (value as unknown).id === 'string' &&
-    typeof (value as unknown).username === 'string' &&
-    ['admin', 'superAdmin'].includes((value as unknown).role) &&
-    typeof (value as unknown).createdAt === 'string' &&
-    typeof (value as unknown).isActive === 'boolean'
+    typeof (value as User).id === 'string' &&
+    typeof (value as User).username === 'string' &&
+    ['admin', 'superAdmin'].includes((value as User).role) &&
+    typeof (value as User).createdAt === 'string' &&
+    typeof (value as User).isActive === 'boolean'
   );
 }
 
@@ -726,8 +726,8 @@ export function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
     'data' in value &&
     'success' in value &&
     'message' in value &&
-    typeof (value as unknown).success === 'boolean' &&
-    typeof (value as unknown).message === 'string'
+    typeof (value as ApiResponse<T>).success === 'boolean' &&
+    typeof (value as ApiResponse<T>).message === 'string'
   );
 }
 

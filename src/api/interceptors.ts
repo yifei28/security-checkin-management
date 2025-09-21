@@ -7,9 +7,47 @@
  * - Consistent error transformation and logging
  */
 
-import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError, AxiosRequestHeaders } from 'axios';
 import { logout } from '../util/auth';
 import { STORAGE_KEYS } from '../types';
+
+/**
+ * Type guard to check if error has a response property
+ */
+function hasResponse(error: unknown): error is { response: { status: number; data?: { message?: string } } } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response: unknown }).response === 'object' &&
+    (error as { response: unknown }).response !== null &&
+    'status' in (error as { response: { status: unknown } }).response
+  );
+}
+
+/**
+ * Type guard to check if error has a message property
+ */
+function hasMessage(error: unknown): error is { message: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+}
+
+/**
+ * Type guard to check if error has a name property
+ */
+function hasName(error: unknown): error is { name: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    typeof (error as { name: unknown }).name === 'string'
+  );
+}
 
 /**
  * Request interceptor to automatically add Bearer token from localStorage
@@ -23,7 +61,7 @@ export const requestInterceptor = (config: InternalAxiosRequestConfig): Internal
     if (token) {
       // Add Authorization header with Bearer token if token exists
       if (!config.headers) {
-        config.headers = {} as Record<string, string>;
+        config.headers = {} as AxiosRequestHeaders;
       }
       config.headers.Authorization = `Bearer ${token}`;
       
@@ -195,57 +233,62 @@ export const transformApiError = (error: unknown): {
   type: string;
 } => {
   // Handle our custom error types
-  if (error.name === 'AuthenticationError') {
-    return {
-      message: error.message,
-      status: 401,
-      type: 'authentication',
-    };
+  if (hasName(error) && hasMessage(error)) {
+    if (error.name === 'AuthenticationError') {
+      return {
+        message: error.message,
+        status: 401,
+        type: 'authentication',
+      };
+    }
+
+    if (error.name === 'PermissionError') {
+      return {
+        message: error.message,
+        status: 403,
+        type: 'permission',
+      };
+    }
+
+    if (error.name === 'NetworkError') {
+      return {
+        message: error.message,
+        type: 'network',
+      };
+    }
+
+    if (error.name === 'ServerError') {
+      return {
+        message: error.message,
+        status: hasResponse(error) ? error.response.status : undefined,
+        type: 'server',
+      };
+    }
+
+    if (error.name === 'ClientError') {
+      return {
+        message: error.message,
+        status: hasResponse(error) ? error.response.status : undefined,
+        type: 'client',
+      };
+    }
   }
-  
-  if (error.name === 'PermissionError') {
-    return {
-      message: error.message,
-      status: 403,
-      type: 'permission',
-    };
-  }
-  
-  if (error.name === 'NetworkError') {
-    return {
-      message: error.message,
-      type: 'network',
-    };
-  }
-  
-  if (error.name === 'ServerError') {
-    return {
-      message: error.message,
-      status: error.response?.status,
-      type: 'server',
-    };
-  }
-  
-  if (error.name === 'ClientError') {
-    return {
-      message: error.message,
-      status: error.response?.status,
-      type: 'client',
-    };
-  }
-  
+
   // Handle generic axios errors
-  if (error.response) {
+  if (hasResponse(error)) {
+    const message = hasMessage(error) ? error.message : 'Request failed';
+    const responseMessage = error.response.data?.message;
     return {
-      message: error.response.data?.message || error.message || 'Request failed',
+      message: responseMessage || message,
       status: error.response.status,
       type: 'http',
     };
   }
-  
+
   // Handle generic errors
+  const message = hasMessage(error) ? error.message : 'An unexpected error occurred';
   return {
-    message: error.message || 'An unexpected error occurred',
+    message,
     type: 'unknown',
   };
 };
@@ -254,8 +297,8 @@ export const transformApiError = (error: unknown): {
  * Utility to check if user should be logged out based on error
  */
 export const shouldLogout = (error: unknown): boolean => {
-  return error.name === 'AuthenticationError' || 
-         (error.response?.status === 401);
+  return (hasName(error) && error.name === 'AuthenticationError') ||
+         (hasResponse(error) && error.response.status === 401);
 };
 
 // Extend the InternalAxiosRequestConfig type to include our custom metadata

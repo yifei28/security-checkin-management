@@ -1,5 +1,41 @@
 import { QueryClient } from '@tanstack/react-query';
 
+/**
+ * Type guard to check if error has a status property
+ */
+function hasStatus(error: unknown): error is { status: number } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as { status: unknown }).status === 'number'
+  );
+}
+
+/**
+ * Type guard to check if error has a name property
+ */
+function hasName(error: unknown): error is { name: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    typeof (error as { name: unknown }).name === 'string'
+  );
+}
+
+/**
+ * Type guard to check if error has a message property
+ */
+function hasMessage(error: unknown): error is { message: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -7,7 +43,7 @@ export const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
       retry: (failureCount, error: unknown) => {
         // Don't retry on 401/403 - let auth context handle it
-        if (error?.status === 401 || error?.status === 403) {
+        if (hasStatus(error) && (error.status === 401 || error.status === 403)) {
           return false;
         }
         // Retry up to 3 times for other errors
@@ -25,14 +61,17 @@ export const queryClient = new QueryClient({
 // Error handler for React Query
 export const queryErrorHandler = (error: unknown): void => {
   console.error('[REACT QUERY ERROR]', error);
-  
+
   // Handle auth errors globally
-  if (error?.status === 401) {
+  if (hasStatus(error) && error.status === 401) {
     console.log('[REACT QUERY] Authentication error, auth context should handle logout');
   }
-  
+
   // Handle network errors
-  if (error?.name === 'NetworkError' || error?.message?.includes('fetch')) {
+  if (
+    (hasName(error) && error.name === 'NetworkError') ||
+    (hasMessage(error) && error.message.includes('fetch'))
+  ) {
     console.log('[REACT QUERY] Network error detected');
   }
 };
@@ -76,19 +115,22 @@ export const apiFetch = async (url: string, options?: RequestInit) => {
   });
 
   if (!response.ok) {
-    const error = new Error(`API Error: ${response.status}`);
-    (error as unknown).status = response.status;
-    (error as unknown).response = response;
-    
+    const error = new Error(`API Error: ${response.status}`) as Error & {
+      status: number;
+      response: Response;
+    };
+    error.status = response.status;
+    error.response = response;
+
     // Try to get error message from response
     try {
       const errorData = await response.json();
-      (error as unknown).message = errorData.message || error.message;
+      error.message = errorData.message || error.message;
     } catch {
       // If JSON parsing fails, use status text
-      (error as unknown).message = response.statusText || error.message;
+      error.message = response.statusText || error.message;
     }
-    
+
     throw error;
   }
 

@@ -97,7 +97,15 @@ export const useCurrentUser = () => {
     // Retry on failure (network errors only)
     retry: (failureCount, error: unknown) => {
       // Don't retry on 401/403 errors
-      if (error?.response?.status === 401 || error?.response?.status === 403) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response &&
+        typeof error.response === 'object' &&
+        'status' in error.response &&
+        (error.response.status === 401 || error.response.status === 403)
+      ) {
         return false;
       }
       return failureCount < 2;

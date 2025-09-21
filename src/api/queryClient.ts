@@ -10,6 +10,20 @@ import type { QueryClientConfig } from '@tanstack/react-query';
 import { globalQueryErrorHandler, globalMutationErrorHandler } from './errorHandling';
 
 /**
+ * Type guard to check if error has a response property
+ */
+function hasResponse(error: unknown): error is { response: { status: number } } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response: unknown }).response === 'object' &&
+    (error as { response: unknown }).response !== null &&
+    'status' in (error as { response: { status: unknown } }).response
+  );
+}
+
+/**
  * Default query options for all queries
  */
 const defaultQueryOptions = {
@@ -22,10 +36,10 @@ const defaultQueryOptions = {
   // Retry failed requests 3 times with exponential backoff
   retry: (failureCount: number, error: unknown) => {
     // Don't retry on 4xx errors (client errors)
-    if (error?.response?.status >= 400 && error?.response?.status < 500) {
+    if (hasResponse(error) && error.response.status >= 400 && error.response.status < 500) {
       return false;
     }
-    
+
     // Retry up to 3 times for network errors and 5xx errors
     return failureCount < 3;
   },
@@ -46,10 +60,10 @@ const defaultMutationOptions = {
   // Retry mutations once (for network errors only)
   retry: (failureCount: number, error: unknown) => {
     // Don't retry client errors (4xx)
-    if (error?.response?.status >= 400 && error?.response?.status < 500) {
+    if (hasResponse(error) && error.response.status >= 400 && error.response.status < 500) {
       return false;
     }
-    
+
     // Only retry once for network/server errors
     return failureCount < 1;
   },
