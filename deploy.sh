@@ -101,13 +101,29 @@ update_code() {
 cleanup_old_deployment() {
     log_info "Cleaning up old deployment..."
 
-    # 停止并删除旧容器
+    # 停止并删除旧容器（docker-compose方式）
     if docker-compose ps | grep -q "$CONTAINER_NAME"; then
-        log_info "Stopping existing containers..."
+        log_info "Stopping existing containers via docker-compose..."
         docker-compose down
-        log_success "Old containers stopped"
+        log_success "Docker-compose containers stopped"
+    fi
+
+    # 额外检查并清理直接运行的Docker容器
+    if docker ps -a --filter "name=$CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
+        log_info "Found existing Docker container: $CONTAINER_NAME"
+
+        # 停止容器（如果正在运行）
+        if docker ps --filter "name=$CONTAINER_NAME" --format "{{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
+            log_info "Stopping running container: $CONTAINER_NAME"
+            docker stop "$CONTAINER_NAME"
+        fi
+
+        # 删除容器
+        log_info "Removing container: $CONTAINER_NAME"
+        docker rm "$CONTAINER_NAME"
+        log_success "Container $CONTAINER_NAME removed"
     else
-        log_info "No existing containers found"
+        log_info "No existing Docker container named $CONTAINER_NAME found"
     fi
 
     # 清理悬空镜像（可选）
