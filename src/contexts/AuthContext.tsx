@@ -258,8 +258,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Reset retry count on successful refresh
       retryCountRef.current = 0;
 
-      // Schedule next refresh
-      scheduleTokenRefresh(data.token);
+      // Token refresh disabled - backend doesn't support it
 
       return true;
 
@@ -297,40 +296,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Schedule token refresh based on token expiry
   const scheduleTokenRefresh = useCallback((token: string) => {
+    // Token refresh disabled - backend doesn't support it
+    console.log('[AUTH] Token refresh disabled - backend does not support token refresh');
+
     // Clear any existing timeout
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
       refreshTimeoutRef.current = null;
     }
 
-    try {
-      const payload = decodeJwtToken(token);
-      if (!payload) {
-        console.warn('[AUTH] Cannot decode token for scheduling refresh');
-        return;
-      }
-
-      const now = Math.floor(Date.now() / 1000);
-      const expiresIn = payload.exp - now;
-      
-      // Schedule refresh 5 minutes (300 seconds) before expiry
-      // or immediately if token expires within 5 minutes
-      const refreshIn = Math.max(expiresIn - 300, 30);
-
-      if (refreshIn > 0) {
-        console.log(`[AUTH] Scheduling token refresh in ${refreshIn} seconds`);
-        refreshTimeoutRef.current = setTimeout(() => {
-          refreshToken();
-        }, refreshIn * 1000);
-      } else {
-        console.log('[AUTH] Token expires soon, refreshing immediately');
-        refreshToken();
-      }
-
-    } catch (error) {
-      console.error('[AUTH] Error scheduling token refresh:', error);
-    }
-  }, [refreshToken]);
+    return;
+  }, []);
 
   // Initialize auth state from localStorage on mount (ONLY ONCE)
   useEffect(() => {
@@ -419,12 +395,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []); // Remove scheduleTokenRefresh dependency to prevent re-initialization
 
-  // Separate effect to schedule token refresh when token changes
-  useEffect(() => {
-    if (state.isAuthenticated && state.token) {
-      scheduleTokenRefresh(state.token);
-    }
-  }, [state.token, state.isAuthenticated, scheduleTokenRefresh]);
+  // Token refresh disabled - backend doesn't support it
+  // useEffect(() => {
+  //   if (state.isAuthenticated && state.token) {
+  //     scheduleTokenRefresh(state.token);
+  //   }
+  // }, [state.token, state.isAuthenticated, scheduleTokenRefresh]);
 
   // ===================================================================
   // Auth Actions
@@ -517,8 +493,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         payload: { user, token }
       });
 
-      // Schedule token refresh for the new token
-      scheduleTokenRefresh(token);
+      // Token refresh disabled - backend doesn't support it
 
     } catch (error) {
       const errorMessage = error instanceof Error
