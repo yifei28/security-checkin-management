@@ -89,21 +89,6 @@ jobs:
           # 配置Git安全目录（避免权限问题）
           git config --global --add safe.directory "$PROJECT_DIR"
 
-          # 拉取最新代码，如果失败则尝试重新获取
-          echo "📡 Pulling latest changes..."
-          if ! git pull origin main; then
-            echo "⚠️ Git pull failed, trying to reset and pull again..."
-            if ! git fetch origin; then
-              echo "🔄 Fetch failed, re-cloning repository..."
-              cd "$HOME"
-              rm -rf "$PROJECT_DIR"
-              git clone https://github.com/yifei28/security-checkin-management.git "$PROJECT_DIR"
-              cd "$PROJECT_DIR"
-            else
-              git reset --hard origin/main
-            fi
-          fi
-
           # 检查deploy.sh是否存在
           if [ ! -f "./deploy.sh" ]; then
             echo "❌ deploy.sh not found in repository"
@@ -112,7 +97,7 @@ jobs:
             exit 1
           fi
 
-          # 使用部署脚本进行部署
+          # 使用部署脚本进行部署（deploy.sh 会处理代码更新）
           chmod +x deploy.sh
           ./deploy.sh --update --clean
 

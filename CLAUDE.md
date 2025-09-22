@@ -15,14 +15,17 @@ This is a React + TypeScript + Vite frontend application for a check-in manageme
 - **Lint code**: `npm run lint`
 - **Preview production build**: `npm run preview`
 
-### Testing Commands
-- **All Tests**: `npm test` or `npx playwright test` - 25+ comprehensive test scenarios
-- **Single Test**: `npx playwright test [test-name].spec.ts`
-- **Test UI Mode**: `npm run test:ui` - Interactive test debugging
-- **Headed Mode**: `npm run test:headed` - Watch tests run in browser
+### Testing and Quality Assurance
+- **End-to-End Tests**: `npx playwright test` - 20+ comprehensive test scenarios in `tests/` directory
+- **Run Single Test**: `npx playwright test [test-name].spec.ts`
+- **Test UI Mode**: `npx playwright test --ui` for interactive test debugging
+- **Run in Browser**: `npm run test:headed` - Watch tests run in browser
 - **CI Tests**: `npm run test:ci` - Pre-push validation tests
+- **Core Tests**: `npm run test:core` - TypeScript validation tests
 - **Basic Tests**: `npm run test:basic` - Core functionality tests
-- **Pre-push Check**: `npm run pre-push` - Full validation (lint + build + test)
+- **Pre-push Check**: `npm run pre-push` - Full validation (lint + build + test:ci)
+- **Type Checking**: TypeScript compilation occurs during build process
+- **Error Boundaries**: Global error handling via `APIErrorBoundary` component
 
 ### Deployment Commands
 - **Docker Build**: `docker build -t checkin-frontend:latest .`
@@ -113,7 +116,7 @@ src/
 - **Request/Response Interceptors**: `src/api/interceptors.ts` - Automatic auth headers, error handling, token refresh
 - **React Query Integration**: `src/api/queryClient.ts` - Global cache configuration and error handling
 - **Query Key Factory**: `src/api/queryKeys.ts` - Centralized query key management for cache invalidation
-- **API Base URL**: `src/util/config.ts` - Uses `/api` prefix, proxied to backend at localhost:8080 in dev
+- **API Base URL**: `src/util/config.ts` - Uses empty string `''` to avoid double prefix, proxied to backend at localhost:8080 in dev
 
 **Service Layer Pattern**:
 - **authApi.ts**: Login, logout, token refresh, user management
@@ -230,6 +233,21 @@ export default {
 - Colors must be in OKLCH format, not HSL
 - Config path in `components.json` must be empty for v4
 - PostCSS plugin is required for Vite to process Tailwind v4
+
+### Critical Configuration Issues
+
+#### API Double Prefix Problem
+**CRITICAL**: The `BASE_URL` in `src/util/config.ts` must be empty string `''` to prevent double `/api/api/` prefix:
+
+```typescript
+// CORRECT - prevents double prefix
+export const BASE_URL = '';
+
+// WRONG - causes /api/api/ double prefix error
+export const BASE_URL = '/api';
+```
+
+**Why**: Vite proxy already adds `/api` prefix to requests, and backend endpoints include `/api` prefix. Setting BASE_URL to '/api' creates `/api/api/` paths that fail.
 
 ## CI/CD and Deployment Architecture
 
