@@ -39,6 +39,7 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
+    document.title = '系统登录 - 都豪鼎盛内部系统';
     console.log(`[LOGIN] Auth state changed - isAuthenticated: ${isAuthenticated}, isLoading: ${isLoading}`);
     if (isAuthenticated) {
       console.log('[LOGIN] User is authenticated, navigating to /admin');
@@ -97,7 +98,7 @@ export default function LoginPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-semibold text-center">管理员登录</CardTitle>
+            <CardTitle className="text-xl font-semibold text-center">系统登录</CardTitle>
           </CardHeader>
           
           <form onSubmit={handleSubmit(onSubmit, handleFormError)}>
@@ -179,7 +180,7 @@ export default function LoginPage() {
         
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
-            管理门户 - 需要安全访问
+            都豪鼎盛内部系统 - 需要安全访问
           </p>
           {process.env.NODE_ENV === 'development' && (
             <div className="text-xs text-muted-foreground mt-2">

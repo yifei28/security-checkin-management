@@ -82,7 +82,7 @@ export default function AdminDashboard() {
 
   const dashboardCards = [
     {
-      title: "保安管理",
+      title: "员工管理",
       description: "添加、编辑、删除保安信息",
       link: "/admin/guards",
       icon: Users,
@@ -105,6 +105,9 @@ export default function AdminDashboard() {
   ]
 
   useEffect(() => {
+    // Set page title
+    document.title = '管理控制台 - 都豪鼎盛内部系统';
+
     const fetchDashboardData = async () => {
       setLoading(true)
       setError('')
@@ -251,7 +254,7 @@ export default function AdminDashboard() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">管理后台首页</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">管理控制台</h1>
           <p className="text-muted-foreground">欢迎使用都豪鼎盛内部系统</p>
         </div>
         
@@ -295,7 +298,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">管理后台首页</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">管理控制台</h1>
           <p className="text-muted-foreground">
             欢迎回来，{user?.username || '管理员'}
             <span className="ml-2 text-sm">
@@ -359,7 +362,7 @@ export default function AdminDashboard() {
             {/* Total Guards */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">保安总数</CardTitle>
+                <CardTitle className="text-sm font-medium">员工总数</CardTitle>
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>

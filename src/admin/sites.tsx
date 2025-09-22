@@ -168,6 +168,8 @@ export default function SiteManagement() {
     };
 
   useEffect(() => {
+    // Set page title
+    document.title = '单位管理 - 都豪鼎盛内部系统';
     fetchData();
   }, [])
 
@@ -431,7 +433,7 @@ export default function SiteManagement() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center space-x-2">
             <MapPin className="h-8 w-8 text-green-600" />
-            <span>站点管理</span>
+            <span>单位管理</span>
           </h1>
           <p className="text-muted-foreground mt-1">
             管理站点位置、签到范围和保安分配 · 共 {sites.length} 个站点

@@ -26,8 +26,8 @@ export default function AdminLayout() {
   };
 
   const navItems = [
-    { path: "/admin", label: "首页" },
-    { path: "/admin/guards", label: "保安管理" },
+    { path: "/admin", label: "控制台" },
+    { path: "/admin/guards", label: "员工管理" },
     { path: "/admin/sites", label: "单位管理" },
     { path: "/admin/checkins", label: "签到记录" },
   ];

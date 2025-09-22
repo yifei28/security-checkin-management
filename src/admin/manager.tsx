@@ -34,6 +34,7 @@ export default function ManagerPage() {
   };
 
   useEffect(() => {
+    document.title = '系统管理员 - 都豪鼎盛内部系统';
     fetchAdmins();
   }, []);
 
@@ -86,8 +87,8 @@ export default function ManagerPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">管理员管理</h1>
-        <p className="text-muted-foreground mt-1">管理系统管理员账户和权限</p>
+        <h1 className="text-3xl font-bold text-foreground">系统管理员</h1>
+        <p className="text-muted-foreground mt-1">管理系统管理员账户和权限设置</p>
       </div>
 
       <Card>

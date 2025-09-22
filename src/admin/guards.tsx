@@ -140,6 +140,8 @@ export default function GuardManagement() {
     };
 
   useEffect(() => {
+    // Set page title
+    document.title = '员工管理 - 都豪鼎盛内部系统';
     fetchData();
   }, [])
 
@@ -389,10 +391,10 @@ export default function GuardManagement() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center space-x-2">
             <Users className="h-8 w-8 text-blue-600" />
-            <span>保安管理</span>
+            <span>员工管理</span>
           </h1>
           <p className="text-muted-foreground mt-1">
-            管理保安信息和分配 · 共 {guards.length} 位保安
+            管理员工信息和分配 · 共 {guards.length} 位员工
           </p>
         </div>
         

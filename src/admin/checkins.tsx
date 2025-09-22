@@ -56,6 +56,11 @@ const parseBeijingTime = (timestamp: string): Date => {
 };
 
 export default function CheckinRecords() {
+  // Set page title
+  useEffect(() => {
+    document.title = '签到记录 - 都豪鼎盛内部系统';
+  }, []);
+
   const [records, setRecords] = useState<CheckInRecordDisplay[]>([]);
   const [guards, setGuards] = useState<Guard[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
