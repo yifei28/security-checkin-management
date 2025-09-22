@@ -68,6 +68,19 @@ const stripIdPrefix = (id: string | number, prefix: string): string => {
   return idStr;
 };
 
+// 辅助函数：查找保安，处理ID格式不一致问题
+const findGuardById = (guards: GuardResponse[], targetId: string | number): GuardResponse | undefined => {
+  const targetIdStr = String(targetId);
+  return guards.find(g => {
+    const gIdStr = String(g.id);
+    return gIdStr === targetIdStr ||
+           gIdStr === `guard_${targetIdStr}` ||
+           targetIdStr === `guard_${gIdStr}` ||
+           gIdStr.replace('guard_', '') === targetIdStr ||
+           targetIdStr.replace('guard_', '') === gIdStr;
+  });
+};
+
 // Map click handler component
 interface LocationSelectorProps {
   position: [number, number]
@@ -273,7 +286,21 @@ export default function SiteManagement() {
         console.log('[SITES] Updated sites list after add:', updatedList);
         return updatedList;
       });
-      
+
+      // Refetch guards data to ensure proper sync after site assignment changes
+      try {
+        const guardsRes = await request(`${BASE_URL}/api/guards`);
+        if (guardsRes.ok) {
+          const guardsResponse = await guardsRes.json();
+          const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
+          setGuards(Array.isArray(guardsData) ? guardsData : []);
+          console.log('[SITES] Guards data refreshed after site creation');
+        }
+      } catch (guardsError) {
+        console.warn('[SITES] Failed to refresh guards data:', guardsError);
+        // Don't throw here, as the main operation was successful
+      }
+
       // Reset form
       setAddForm({ name: '', latitude: '', longitude: '', allowedRadiusMeters: '', assignedGuardIds: [] });
       setIsAddDialogOpen(false);
@@ -364,7 +391,21 @@ export default function SiteManagement() {
         console.log('[SITES] Updated sites list:', newSites);
         return newSites;
       });
-      
+
+      // Refetch guards data to ensure proper sync after site assignment changes
+      try {
+        const guardsRes = await request(`${BASE_URL}/api/guards`);
+        if (guardsRes.ok) {
+          const guardsResponse = await guardsRes.json();
+          const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
+          setGuards(Array.isArray(guardsData) ? guardsData : []);
+          console.log('[SITES] Guards data refreshed after site update');
+        }
+      } catch (guardsError) {
+        console.warn('[SITES] Failed to refresh guards data:', guardsError);
+        // Don't throw here, as the main operation was successful
+      }
+
       // Reset edit state
       setEditingId(null);
       setEditForm({ name: '', latitude: '', longitude: '', allowedRadiusMeters: '', assignedGuardIds: [] });
@@ -570,7 +611,7 @@ export default function SiteManagement() {
                   {addForm.assignedGuardIds.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {addForm.assignedGuardIds.map(guardId => {
-                        const guard = guards.find(g => g.id === guardId);
+                        const guard = findGuardById(guards, guardId);
                         if (!guard) return null;
                         return (
                           <Badge key={guardId} variant="secondary" className="flex items-center space-x-1">
@@ -755,7 +796,6 @@ export default function SiteManagement() {
                   <TableHead>站点信息</TableHead>
                   <TableHead>位置坐标</TableHead>
                   <TableHead>签到范围</TableHead>
-                  <TableHead>分配保安</TableHead>
                   <TableHead className="w-32">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -798,35 +838,6 @@ export default function SiteManagement() {
                         <Target className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{site.allowedRadiusMeters}m</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {site.assignedGuardIds && site.assignedGuardIds.length > 0 ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-1">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{site.assignedGuardIds.length}位保安</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {site.assignedGuardIds.slice(0, 2).map(guardId => {
-                              const guard = guards.find(g => g.id === guardId);
-                              return guard ? (
-                                <Badge key={guardId} variant="outline" className="text-xs">
-                                  {guard.name}
-                                </Badge>
-                              ) : null;
-                            })}
-                            {site.assignedGuardIds.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{site.assignedGuardIds.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          未分配
-                        </Badge>
-                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -957,7 +968,7 @@ export default function SiteManagement() {
                 {editForm.assignedGuardIds.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {editForm.assignedGuardIds.map(guardId => {
-                      const guard = guards.find(g => g.id === guardId);
+                      const guard = findGuardById(guards, guardId);
                       if (!guard) return null;
                       return (
                         <Badge key={guardId} variant="secondary" className="flex items-center space-x-1">
