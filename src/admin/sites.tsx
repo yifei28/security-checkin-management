@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Search, MapPin, Edit, Trash2, Users, AlertCircle, Target, Map } from 'lucide-react';
 // import { cn } from "@/lib/utils";
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -97,6 +97,32 @@ function LocationSelector({ position, onLocationSelect, radius }: LocationSelect
       />
     </>
   );
+}
+
+// Map view controller component for dynamic center updates
+interface MapViewControllerProps {
+  center: [number, number]
+  zoom?: number
+}
+
+function MapViewController({ center, zoom = 13 }: MapViewControllerProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Validate coordinates before updating view
+    if (center && center.length === 2) {
+      const [lat, lng] = center;
+
+      // Check if coordinates are valid numbers within range
+      if (!isNaN(lat) && !isNaN(lng) &&
+          lat >= -90 && lat <= 90 &&
+          lng >= -180 && lng <= 180) {
+        map.setView(center, zoom, { animate: true });
+      }
+    }
+  }, [center, zoom, map]);
+
+  return null; // This component doesn't render anything
 }
 
 export default function SiteManagement() {
@@ -593,6 +619,12 @@ export default function SiteManagement() {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
+                    <MapViewController
+                      center={[
+                        parseFloat(addForm.latitude) || mapCenter[0],
+                        parseFloat(addForm.longitude) || mapCenter[1]
+                      ]}
+                    />
                     <LocationSelector
                       position={[
                         parseFloat(addForm.latitude) || mapCenter[0],
@@ -973,6 +1005,12 @@ export default function SiteManagement() {
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <MapViewController
+                    center={[
+                      parseFloat(editForm.latitude) || mapCenter[0],
+                      parseFloat(editForm.longitude) || mapCenter[1]
+                    ]}
                   />
                   <LocationSelector
                     position={[
