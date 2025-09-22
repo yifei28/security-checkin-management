@@ -252,7 +252,7 @@ export default function AdminDashboard() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">管理后台首页</h1>
-          <p className="text-muted-foreground">欢迎使用安全巡检管理系统</p>
+          <p className="text-muted-foreground">欢迎使用都豪鼎盛内部系统</p>
         </div>
         
         <Alert variant="destructive">

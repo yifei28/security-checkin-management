@@ -91,7 +91,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold mb-2">
-            安全巡检管理系统
+            都豪鼎盛内部系统
           </h1>
         </div>
         

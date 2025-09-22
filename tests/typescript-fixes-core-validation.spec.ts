@@ -25,7 +25,7 @@ test.describe('Core TypeScript Fixes Validation', () => {
     await page.goto('/login');
 
     // 验证登录页面加载正确
-    await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+    await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
     // 执行登录
     await page.fill('input[type="text"]', TEST_CREDENTIALS.username);

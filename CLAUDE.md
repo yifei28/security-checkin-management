@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React + TypeScript + Vite frontend application for a check-in management system. The application provides an admin interface for managing security guards, sites, and check-in records, with role-based access control (super admin vs regular admin).
+This is a React + TypeScript + Vite frontend application for 都豪鼎盛内部系统 (Duhao Dingsheng Internal System). The application provides an admin interface for managing security guards, sites, and check-in records, with role-based access control (super admin vs regular admin).
 
 **UI Framework**: Built with **shadcn/ui** components on Tailwind CSS v4 for modern, accessible, and professional user interface design.
 

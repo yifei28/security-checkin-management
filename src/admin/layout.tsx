@@ -36,7 +36,7 @@ export default function AdminLayout() {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 border-r bg-card p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground">安全巡检管理系统</h2>
+          <h2 className="text-xl font-semibold text-foreground">都豪鼎盛内部系统</h2>
           <p className="text-sm text-muted-foreground mt-1">管理后台</p>
           {user && (
             <p className="text-xs text-muted-foreground mt-1">

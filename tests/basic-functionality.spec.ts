@@ -30,7 +30,7 @@ const TEST_DATA = {
 // 辅助函数：登录
 async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto('/login');
-  await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+  await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
   await page.fill('input[type="text"]', TEST_CREDENTIALS.username);
   await page.fill('input[type="password"]', TEST_CREDENTIALS.password);
@@ -52,7 +52,7 @@ test.describe('基本功能测试集合', () => {
       await page.goto('/login');
 
       // 检查登录页面元素
-      await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+      await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
       await expect(page.locator('input[type="text"]')).toBeVisible();
       await expect(page.locator('input[type="password"]')).toBeVisible();
       await expect(page.locator('button[type="submit"]')).toBeVisible();
@@ -390,7 +390,7 @@ test.describe('基本功能测试集合', () => {
       const startTime = Date.now();
 
       await page.goto('/login');
-      await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+      await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
       const loadTime = Date.now() - startTime;
 

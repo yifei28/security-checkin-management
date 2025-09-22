@@ -34,7 +34,7 @@ test.describe('TypeScript Fixes Validation', () => {
       await page.goto('/login');
 
       // Check login form is displayed
-      await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+      await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
       // Perform login - this tests the AuthContext fixes
       await page.fill('input[type="text"]', TEST_CREDENTIALS.username);

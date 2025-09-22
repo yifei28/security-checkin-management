@@ -41,7 +41,7 @@ const TEST_DATA = {
 // Helper functions
 async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto('/login');
-  await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+  await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
   await page.fill('input[type="text"]', TEST_CREDENTIALS.username);
   await page.fill('input[type="password"]', TEST_CREDENTIALS.password);
@@ -342,7 +342,7 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
       const startTime = Date.now();
 
       await page.goto('/login');
-      await expect(page.locator('h1')).toContainText('安全巡检管理系统');
+      await expect(page.locator('h1')).toContainText('都豪鼎盛内部系统');
 
       const loadTime = Date.now() - startTime;
 
