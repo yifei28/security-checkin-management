@@ -294,19 +294,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isRefreshing, state.user]);
 
-  // Schedule token refresh based on token expiry
-  const scheduleTokenRefresh = useCallback((token: string) => {
-    // Token refresh disabled - backend doesn't support it
-    console.log('[AUTH] Token refresh disabled - backend does not support token refresh');
-
-    // Clear any existing timeout
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-      refreshTimeoutRef.current = null;
-    }
-
-    return;
-  }, []);
+  // Token refresh disabled - backend doesn't support it
+  // const scheduleTokenRefresh = useCallback((token: string) => {
+  //   console.log('[AUTH] Token refresh disabled - backend does not support token refresh');
+  //   if (refreshTimeoutRef.current) {
+  //     clearTimeout(refreshTimeoutRef.current);
+  //     refreshTimeoutRef.current = null;
+  //   }
+  //   return;
+  // }, []);
 
   // Initialize auth state from localStorage on mount (ONLY ONCE)
   useEffect(() => {
