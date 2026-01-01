@@ -2,20 +2,18 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Users, 
-  MapPin, 
-  CheckCircle2, 
-  Clock, 
-  TrendingUp, 
+import {
+  Users,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
   AlertTriangle,
   Shield,
   Eye,
-  Calendar,
   Activity,
   XCircle
 } from 'lucide-react'
@@ -27,15 +25,20 @@ import { cn } from '@/lib/utils'
 // Types for real dashboard data
 interface DashboardData {
   totalGuards: number
-  activeGuards: number
   totalSites: number
-  activeSites: number
   todayCheckins: number
   weeklyCheckins: number
   successfulCheckins: number
   failedCheckins: number
   successRate: number
   latestCheckins: CheckinRecord[]
+  // New statistics
+  averageAge: number
+  teamLeaderCount: number
+  teamMemberCount: number
+  todayCheckinRate: number // 今日签到率 = 今日签到人数 / 总员工数
+  todayCheckedInCount: number // 今日已签到人数（去重）
+  weeklyTrend: { date: string; count: number }[] // 本周每天签到次数
 }
 
 interface CheckinRecord {
@@ -61,6 +64,8 @@ interface Guard {
   site: { id: string; name: string } | null
   active?: boolean
   isActive?: boolean
+  age?: number
+  role?: 'TEAM_LEADER' | 'TEAM_MEMBER'
 }
 
 interface Site {
@@ -111,100 +116,167 @@ export default function AdminDashboard() {
     const fetchDashboardData = async () => {
       setLoading(true)
       setError('')
-      
-      try {
-        // Fetch data from all endpoints in parallel
-        const [guardsRes, sitesRes, checkinsRes] = await Promise.all([
-          request(`${BASE_URL}/api/guards`),
-          request(`${BASE_URL}/api/sites`),
-          request(`${BASE_URL}/api/checkin`)
-        ])
 
-        if (!guardsRes.ok || !sitesRes.ok || !checkinsRes.ok) {
-          throw new Error('获取数据失败')
+      try {
+        // Try the new statistics API first
+        const statsRes = await request(`${BASE_URL}/api/statistics/dashboard`)
+
+        if (statsRes.ok) {
+          const statsResponse = await statsRes.json()
+
+          if (statsResponse.success && statsResponse.data) {
+            const { guards, sites, checkins, latestCheckins } = statsResponse.data
+
+            // Format weekly trend dates for display
+            const weeklyTrend = checkins.weekly.trend.map((item: { date: string; count: number }) => {
+              const date = new Date(item.date)
+              return {
+                date: date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+                count: item.count
+              }
+            })
+
+            // Map latestCheckins to our format
+            const formattedLatestCheckins: CheckinRecord[] = latestCheckins.map((item: {
+              id: string
+              guardName: string
+              siteName: string
+              timestamp: string
+              status: string
+              reason?: string
+            }) => ({
+              id: item.id,
+              guardId: '',
+              siteId: '',
+              guardName: item.guardName,
+              siteName: item.siteName,
+              timestamp: item.timestamp,
+              status: item.status as 'success' | 'failed' | 'pending',
+              location: { lat: 0, lng: 0 },
+              reason: item.reason
+            }))
+
+            setDashboardData({
+              totalGuards: guards.total,
+              totalSites: sites.total,
+              todayCheckins: checkins.today.total,
+              weeklyCheckins: checkins.weekly.total,
+              successfulCheckins: checkins.overall.successCount,
+              failedCheckins: checkins.overall.failedCount,
+              successRate: checkins.overall.successRate,
+              latestCheckins: formattedLatestCheckins,
+              averageAge: guards.averageAge,
+              teamLeaderCount: guards.teamLeaderCount,
+              teamMemberCount: guards.teamMemberCount,
+              todayCheckinRate: checkins.today.checkinRate,
+              todayCheckedInCount: checkins.today.uniqueGuards,
+              weeklyTrend
+            })
+            return
+          }
         }
 
-        const [guardsResponse, sitesResponse, checkinsResponse] = await Promise.all([
-          guardsRes.json(),
-          sitesRes.json(),
-          checkinsRes.json()
-        ])
-
-        // Parse API responses (handle wrapped format)
-        const guardsData: Guard[] = guardsResponse.success && guardsResponse.data ? guardsResponse.data : []
-        const sitesData: Site[] = sitesResponse.success && sitesResponse.data ? sitesResponse.data : []
-        const checkinsData: CheckinRecord[] = checkinsResponse.success && checkinsResponse.data ? checkinsResponse.data : []
-
-        // Calculate dashboard metrics
-        const totalGuards = guardsData.length
-        const activeGuards = guardsData.filter(g => g.isActive !== false).length
-        const totalSites = sitesData.length
-        const activeSites = sitesData.filter(s => s.isActive !== false).length
-
-        // Process checkin data
-        const today = new Date()
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const weekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-        const enrichedCheckins: CheckinRecord[] = checkinsData.map((record: CheckinRecord) => {
-          const guard = guardsData.find(g => g.id === record.guardId)
-          const site = sitesData.find(s => s.id === record.siteId)
-          
-          // Map status format
-          const statusMapping: { [key: string]: 'success' | 'failed' | 'pending' } = {
-            'success': 'success',
-            'failed': 'failed',
-            'pending': 'pending',
-            'SUCCESS': 'success',
-            'FAILED': 'failed',
-            'PENDING': 'pending'
-          }
-
-          return {
-            ...record,
-            status: statusMapping[record.status] || 'pending',
-            guardName: guard?.name || '未知保安',
-            siteName: site?.name || '未知站点'
-          }
-        })
-
-        const todayCheckins = enrichedCheckins.filter(r => 
-          new Date(r.timestamp) >= todayStart
-        ).length
-
-        const weeklyCheckins = enrichedCheckins.filter(r => 
-          new Date(r.timestamp) >= weekStart
-        ).length
-
-        const successfulCheckins = enrichedCheckins.filter(r => r.status === 'success').length
-        const failedCheckins = enrichedCheckins.filter(r => r.status === 'failed').length
-        const successRate = enrichedCheckins.length > 0 
-          ? Math.round((successfulCheckins / enrichedCheckins.length) * 100) 
-          : 0
-
-        // Get latest 5 checkins, sorted by timestamp
-        const latestCheckins = enrichedCheckins
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 5)
-
-        setDashboardData({
-          totalGuards,
-          activeGuards,
-          totalSites,
-          activeSites,
-          todayCheckins,
-          weeklyCheckins,
-          successfulCheckins,
-          failedCheckins,
-          successRate,
-          latestCheckins
-        })
+        // Fallback: fetch from individual endpoints if statistics API not available
+        console.log('[DASHBOARD] Statistics API not available, using fallback method')
+        await fetchDashboardDataFallback()
       } catch (error: unknown) {
         console.error('[DASHBOARD] Fetch error:', error)
         setError(error instanceof Error ? error.message : '获取数据失败，请刷新页面重试')
       } finally {
         setLoading(false)
       }
+    }
+
+    // Fallback method using individual APIs
+    const fetchDashboardDataFallback = async () => {
+      const [guardsRes, sitesRes, checkinsRes] = await Promise.all([
+        request(`${BASE_URL}/api/guards?pageSize=1000`),
+        request(`${BASE_URL}/api/sites?pageSize=1000`),
+        request(`${BASE_URL}/api/checkin?pageSize=1000`)
+      ])
+
+      if (!guardsRes.ok || !sitesRes.ok || !checkinsRes.ok) {
+        throw new Error('获取数据失败')
+      }
+
+      const [guardsResponse, sitesResponse, checkinsResponse] = await Promise.all([
+        guardsRes.json(),
+        sitesRes.json(),
+        checkinsRes.json()
+      ])
+
+      const guardsData: Guard[] = guardsResponse.success && guardsResponse.data ? guardsResponse.data : []
+      const sitesData: Site[] = sitesResponse.success && sitesResponse.data ? sitesResponse.data : []
+      const checkinsData: CheckinRecord[] = checkinsResponse.success && checkinsResponse.data ? checkinsResponse.data : []
+
+      const totalGuards = guardsResponse.pagination?.total ?? guardsData.length
+      const totalSites = sitesResponse.pagination?.total ?? sitesData.length
+
+      const guardsWithAge = guardsData.filter(g => g.age && g.age > 0)
+      const averageAge = guardsWithAge.length > 0
+        ? Math.round(guardsWithAge.reduce((sum, g) => sum + (g.age || 0), 0) / guardsWithAge.length)
+        : 0
+
+      const teamLeaderCount = guardsData.filter(g => g.role === 'TEAM_LEADER').length
+      const teamMemberCount = guardsData.filter(g => g.role === 'TEAM_MEMBER').length
+
+      const today = new Date()
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const weekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+      const enrichedCheckins: CheckinRecord[] = checkinsData.map((record: CheckinRecord) => {
+        const guard = guardsData.find(g => g.id === record.guardId)
+        const site = sitesData.find(s => s.id === record.siteId)
+        const statusMapping: { [key: string]: 'success' | 'failed' | 'pending' } = {
+          'success': 'success', 'failed': 'failed', 'pending': 'pending',
+          'SUCCESS': 'success', 'FAILED': 'failed', 'PENDING': 'pending'
+        }
+        return {
+          ...record,
+          status: statusMapping[record.status] || 'pending',
+          guardName: guard?.name || '未知保安',
+          siteName: site?.name || '未知站点'
+        }
+      })
+
+      const todayCheckinsRecords = enrichedCheckins.filter(r => new Date(r.timestamp) >= todayStart)
+      const todayCheckins = todayCheckinsRecords.length
+      const todayCheckedInGuards = new Set(todayCheckinsRecords.map(r => r.guardId))
+      const todayCheckinRate = totalGuards > 0 ? Math.round((todayCheckedInGuards.size / totalGuards) * 100) : 0
+
+      const weeklyCheckinsRecords = enrichedCheckins.filter(r => new Date(r.timestamp) >= weekStart)
+      const weeklyCheckins = weeklyCheckinsRecords.length
+
+      const weeklyTrend: { date: string; count: number }[] = []
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today)
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+        const count = enrichedCheckins.filter(r => {
+          const ts = new Date(r.timestamp)
+          return ts >= dayStart && ts < dayEnd
+        }).length
+        weeklyTrend.push({ date: dateStr, count })
+      }
+
+      const apiStats = checkinsResponse.statistics
+      const totalCheckins = checkinsResponse.pagination?.total ?? enrichedCheckins.length
+      const successfulCheckins = apiStats?.successCount ?? enrichedCheckins.filter(r => r.status === 'success').length
+      const failedCheckins = apiStats?.failedCount ?? enrichedCheckins.filter(r => r.status === 'failed').length
+      const successRate = totalCheckins > 0 ? Math.round((successfulCheckins / totalCheckins) * 100) : 0
+
+      const latestCheckins = enrichedCheckins
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 5)
+
+      setDashboardData({
+        totalGuards, totalSites, todayCheckins, weeklyCheckins,
+        successfulCheckins, failedCheckins, successRate, latestCheckins,
+        averageAge, teamLeaderCount, teamMemberCount,
+        todayCheckinRate, todayCheckedInCount: todayCheckedInGuards.size, weeklyTrend
+      })
     }
 
     fetchDashboardData()
@@ -358,7 +430,8 @@ export default function AdminDashboard() {
       {/* Main Metrics Cards */}
       {dashboardData && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* First row: 3 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Total Guards */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -366,49 +439,50 @@ export default function AdminDashboard() {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardData.totalGuards}</div>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Progress 
-                    value={dashboardData.totalGuards > 0 ? (dashboardData.activeGuards / dashboardData.totalGuards) * 100 : 0} 
-                    className="flex-1"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {dashboardData.activeGuards} 活跃
-                  </span>
-                </div>
+                <div className="text-3xl font-bold">{dashboardData.totalGuards}</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  队长 {dashboardData.teamLeaderCount} / 队员 {dashboardData.teamMemberCount}
+                </p>
               </CardContent>
             </Card>
 
             {/* Total Sites */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">站点总数</CardTitle>
+                <CardTitle className="text-sm font-medium">单位总数</CardTitle>
                 <MapPin className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardData.totalSites}</div>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Progress 
-                    value={dashboardData.totalSites > 0 ? (dashboardData.activeSites / dashboardData.totalSites) * 100 : 0} 
-                    className="flex-1"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {dashboardData.activeSites} 活跃
-                  </span>
-                </div>
+                <div className="text-3xl font-bold">{dashboardData.totalSites}</div>
+                <p className="text-sm text-muted-foreground mt-1">个签到单位</p>
               </CardContent>
             </Card>
 
-            {/* Today's Check-ins */}
+            {/* Average Age */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">今日签到</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">平均年龄</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardData.todayCheckins}</div>
-                <p className="text-xs text-muted-foreground">
-                  本周共 {dashboardData.weeklyCheckins} 次
+                <div className="text-3xl font-bold">{dashboardData.averageAge} <span className="text-xl">岁</span></div>
+                <p className="text-sm text-muted-foreground mt-1">员工平均年龄</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Second row: 2 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Today's Check-in Rate */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">今日签到率</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{dashboardData.todayCheckinRate}%</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {dashboardData.todayCheckedInCount}/{dashboardData.totalGuards} 人已签到，共 {dashboardData.todayCheckins} 次
                 </p>
               </CardContent>
             </Card>
@@ -420,8 +494,8 @@ export default function AdminDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{dashboardData.successRate}%</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-3xl font-bold text-green-600">{dashboardData.successRate}%</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   {dashboardData.successfulCheckins} 成功 / {dashboardData.failedCheckins} 失败
                 </p>
               </CardContent>
@@ -430,40 +504,50 @@ export default function AdminDashboard() {
 
           {/* Statistics and Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Status Distribution */}
+            {/* Weekly Trend Bar Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>签到状态统计</span>
+                  <Activity className="h-5 w-5" />
+                  <span>本周签到趋势</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">成功签到</span>
-                    <span className="text-sm font-medium text-green-600">{dashboardData.successfulCheckins}</span>
-                  </div>
-                  <Progress 
-                    value={dashboardData.latestCheckins.length > 0 ? (dashboardData.successfulCheckins / (dashboardData.successfulCheckins + dashboardData.failedCheckins) * 100) : 0} 
-                    className="[&>div]:bg-green-500"
-                  />
+              <CardContent>
+                <div className="flex items-end justify-between gap-2 px-2" style={{ height: '120px' }}>
+                  {dashboardData.weeklyTrend.map((day, index) => {
+                    const maxCount = Math.max(...dashboardData.weeklyTrend.map(d => d.count), 1)
+                    const barHeight = Math.max((day.count / maxCount) * 100, 10)
+                    const isToday = index === dashboardData.weeklyTrend.length - 1
+                    return (
+                      <div key={day.date} className="flex flex-col items-center flex-1 group">
+                        <div className={cn(
+                          "text-xs font-medium mb-1",
+                          isToday ? "text-blue-600" : "text-muted-foreground"
+                        )}>
+                          {day.count}
+                        </div>
+                        <div
+                          className={cn(
+                            "w-8 rounded-t-md transition-all duration-300",
+                            isToday
+                              ? "bg-blue-500"
+                              : "bg-blue-200"
+                          )}
+                          style={{ height: `${barHeight}px` }}
+                        />
+                        <div className={cn(
+                          "text-xs mt-2",
+                          isToday ? "font-bold text-blue-600" : "text-muted-foreground"
+                        )}>
+                          {day.date}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">失败签到</span>
-                    <span className="text-sm font-medium text-red-600">{dashboardData.failedCheckins}</span>
-                  </div>
-                  <Progress 
-                    value={dashboardData.latestCheckins.length > 0 ? (dashboardData.failedCheckins / (dashboardData.successfulCheckins + dashboardData.failedCheckins) * 100) : 0}
-                    className="[&>div]:bg-red-500"
-                  />
-                </div>
-                
-                <div className="pt-2 text-center">
+                <div className="pt-3 text-center border-t mt-3">
                   <span className="text-sm text-muted-foreground">
-                    总计签到记录: {dashboardData.successfulCheckins + dashboardData.failedCheckins}
+                    本周共 <span className="font-semibold text-foreground">{dashboardData.weeklyCheckins}</span> 次签到
                   </span>
                 </div>
               </CardContent>
@@ -518,37 +602,6 @@ export default function AdminDashboard() {
         </>
       )}
       
-      {/* Navigation Cards */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4 flex items-center space-x-2">
-          <Calendar className="h-5 w-5" />
-          <span>快速操作</span>
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {dashboardCards.map((card, index) => {
-            const Icon = card.icon
-            return (
-              <Card key={index} className="hover:shadow-md transition-all duration-200 hover:scale-105">
-                <CardHeader>
-                  <div className="flex items-center space-x-2">
-                    <Icon className={cn("h-5 w-5", card.color)} />
-                    <CardTitle className="text-lg">{card.title}</CardTitle>
-                  </div>
-                  <CardDescription>{card.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link to={card.link}>
-                    <Button className="w-full">
-                      进入管理
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
     </div>
   )
 }

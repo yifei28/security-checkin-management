@@ -86,7 +86,9 @@ src/
 │   ├── ui/              # shadcn/ui components
 │   ├── APIErrorBoundary.tsx  # Global error handling
 │   ├── CheckinAnalytics.tsx  # Analytics widgets
-│   └── CheckinMapView.tsx    # Geographic visualization
+│   ├── CheckinMapView.tsx    # Geographic visualization
+│   ├── CertificateRangeFilter.tsx  # Certificate level range filter
+│   └── HeightRangeFilter.tsx       # Height range filter
 ├── contexts/        # React contexts
 │   └── AuthContext.tsx  # Authentication state management
 ├── types/           # TypeScript definitions
@@ -100,7 +102,9 @@ src/
 │   ├── config.ts        # Configuration (API base URL)
 │   ├── request.ts       # HTTP request wrapper (legacy)
 │   └── logger.ts        # Logging utilities
-└── assets/          # Static assets
+├── assets/          # Static assets
+docs/                # API documentation
+└── filter_api.md    # Backend filtering API reference
 ```
 
 ### Authentication & Authorization
@@ -147,21 +151,8 @@ src/
 
 ### Key Components
 - `ProtectedRoute`: Handles authentication and role-based access control
-- `AdminLayout`: Provides navigation sidebar and main content area (to be redesigned with shadcn/ui)
+- `AdminLayout`: Provides navigation sidebar and main content area
 - Individual admin pages for CRUD operations on different entities
-
-### shadcn/ui Component Usage
-- **Login Page**: Already implemented with Card, Input, and Button components
-- **Management Interface**: Use shadcn/ui components for consistent, professional UI:
-  - **Tables**: Use Table, TableHeader, TableBody, TableRow, TableCell for data display
-  - **Forms**: Use Form, FormField, FormItem, FormLabel, FormControl for user input
-  - **Navigation**: Use Sheet or NavigationMenu for sidebar/navigation
-  - **Dialogs**: Use Dialog, AlertDialog for modals and confirmations
-  - **Buttons**: Use Button with variants (default, destructive, outline, secondary, ghost)
-  - **Cards**: Use Card for content sections and dashboard widgets
-  - **Inputs**: Use Input, Textarea, Select for form controls
-  - **Feedback**: Use Alert, Toast for user notifications
-  - **Layout**: Use Separator, Skeleton for spacing and loading states
 
 ## Tailwind CSS v4 + shadcn/ui Configuration
 
@@ -294,9 +285,9 @@ export const BASE_URL = '/api';
 ## Development Guidelines
 
 ### Adding New shadcn/ui Components
-1. Install component: `npx shadcn@latest add [component-name]`
-2. Import in your file: `import { ComponentName } from "@/components/ui/component-name"`
-3. Use the `cn()` utility for class merging: `import { cn } from "@/lib/utils"`
+1. Install: `npx shadcn@latest add [component-name]`
+2. Import: `import { ComponentName } from "@/components/ui/component-name"`
+3. Use `cn()` for class merging: `import { cn } from "@/lib/utils"`
 
 ### Code Quality Standards
 - **ESLint**: Zero errors and warnings enforced (recently achieved perfect state)
@@ -311,62 +302,15 @@ export const BASE_URL = '/api';
 - **Theming**: Components automatically adapt to light/dark themes via CSS variables
 - **Chinese Language**: Ensure all text content remains in Chinese
 - **Professional Appearance**: Use semantic colors and proper spacing
-
-### Component Implementation Examples
-```tsx
-// Card-based layout
-<Card>
-  <CardHeader>
-    <CardTitle>标题</CardTitle>
-    <CardDescription>描述文字</CardDescription>
-  </CardHeader>
-  <CardContent>
-    <p>内容</p>
-  </CardContent>
-</Card>
-
-// Form with validation
-<Form>
-  <FormField>
-    <FormLabel>用户名</FormLabel>
-    <FormControl>
-      <Input placeholder="请输入用户名" />
-    </FormControl>
-  </FormField>
-</Form>
-
-// Data table
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>姓名</TableHead>
-      <TableHead>状态</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    <TableRow>
-      <TableCell>张三</TableCell>
-      <TableCell>在线</TableCell>
-    </TableRow>
-  </TableBody>
-</Table>
-```
+- **Reference Examples**: See existing components in `src/admin/` for implementation patterns
 
 ## Testing Strategy
 
-### Test Categories
-- **Basic Functionality**: Core login, navigation, and CRUD operations
+### Test Categories (26 test files in `tests/`)
+- **Basic Functionality**: Login, navigation, CRUD operations (`basic-functionality.spec.ts`)
 - **Integration Tests**: Guard-site relationships, API interactions, data flow
-- **Time Zone Tests**: Beijing time handling, date filtering, time display consistency
-- **Performance Tests**: Dashboard metrics, checkin analytics, optimization validation
-- **CI Tests**: Pre-push validation ensuring deployable state
-
-### Key Test Files
-- `basic-functionality.spec.ts`: Core application functionality
-- `pre-push-check.spec.ts`: CI validation before deployment
-- `typescript-fixes-core-validation.spec.ts`: Type safety verification
-- `comprehensive-time-test.spec.ts`: Time zone and filtering validation
-- `guard-site-relationship.spec.ts`: Business logic validation
+- **Time Zone Tests**: Beijing time handling, date filtering (`comprehensive-time-test.spec.ts`)
+- **CI Tests**: Pre-push validation (`pre-push-check.spec.ts`)
 
 ### Test Configuration
 - **Auto-start**: Development server automatically starts for tests
@@ -380,6 +324,62 @@ export const BASE_URL = '/api';
 - **One-to-One Constraint**: Each guard can only be assigned to ONE site (Guard.siteId)
 - **Site Assignment**: Sites can have multiple guards (Site.assignedGuardIds array)
 - **EmployeeId Auto-Generation**: Backend automatically generates employeeId - never manually input
+
+### Guard Data Structure
+Guards have the following key fields:
+- **Basic Info**: name, phone, idCardNumber (身份证号), gender, birthDate, height (cm)
+- **Employment**: role (TEAM_LEADER/TEAM_MEMBER), employmentStatus (ACTIVE/PROBATION/RESIGNED/TERMINATED), hireDate
+- **Certificates**: firefightingCert, securityGuardCert, securityCheckCert (levels 1-5, null if none)
+- **Assignment**: siteId (linked to Site)
+
+### Certificate System
+Three certificate types with 5 levels each:
+- **消防证 (firefightingCert)**: Firefighting certificate
+- **保安证 (securityGuardCert)**: Security guard certificate
+- **安检证 (securityCheckCert)**: Security check certificate
+
+Certificate level labels (1=highest, 5=lowest):
+| Level | 消防证 | 保安证 | 安检证 |
+|-------|--------|--------|--------|
+| 1 | 高级技师 | 高级保安师 | 高级技师 |
+| 2 | 技师 | 管理师 | 技师 |
+| 3 | 高级 | 高级 | 高级 |
+| 4 | 中级 | 中级 | 中级 |
+| 5 | 初级 | 初级 | 初级 |
+
+### Guards List Filtering
+The guards page supports comprehensive server-side filtering:
+
+**Basic Filters** (dropdown/text):
+- `name`: Fuzzy search by name
+- `siteId`: Filter by assigned site
+- `employmentStatus`: ACTIVE, PROBATION, RESIGNED, TERMINATED
+- `role`: TEAM_LEADER, TEAM_MEMBER
+
+**Certificate Filters** (range sliders 1-5):
+- `firefightingCertMin/Max`: Filter by firefighting certificate level
+- `securityGuardCertMin/Max`: Filter by security guard certificate level
+- `securityCheckCertMin/Max`: Filter by security check certificate level
+
+**Height Filter** (range slider 150-210cm):
+- `heightMin/Max`: Filter by height range
+
+Filter components:
+- `src/components/CertificateRangeFilter.tsx`: Reusable certificate range filter with Popover + Slider
+- `src/components/HeightRangeFilter.tsx`: Height range filter with Popover + Slider
+
+### Guards Table Columns
+The guards list displays these columns:
+1. 保安信息 (name with avatar)
+2. 联系方式 (phone)
+3. 身份证号 (ID card number)
+4. 性别/年龄 (gender/age calculated from birthDate)
+5. 身高 (height in cm)
+6. 角色 (role: 队长/队员)
+7. 持有证书 (certificates with level labels)
+8. 在职状态 (employment status)
+9. 所属站点 (assigned site name)
+10. 操作 (edit/delete buttons)
 
 ### Check-In Validation Rules
 - **Location Validation**: Check-ins must be within `Site.allowedRadiusMeters` of the site coordinates

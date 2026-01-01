@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { usePagination } from '@/hooks/usePagination';
+import type { PaginationResponse } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/TablePagination';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Search, MapPin, Edit, Trash2, Users, AlertCircle, Target, Map } from 'lucide-react';
 // import { cn } from "@/lib/utils";
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -166,34 +169,73 @@ export default function SiteManagement() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+
+  // Server-side filter state
+  const [nameFilter, setNameFilter] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+
   const [mapCenter] = useState<[number, number]>([39.9042, 116.4074]) // Beijing default
+  const [showOverviewMap, setShowOverviewMap] = useState(false)
+
+  // 分页状态
+  const pagination = usePagination({
+    initialPageSize: 20,
+    initialSortBy: 'name',
+    initialSortOrder: 'asc'
+  });
+
+  // Debounce search input - update nameFilter after 300ms delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (nameFilter !== searchInput) {
+        setNameFilter(searchInput)
+        pagination.setPage(1) // Reset to first page when search changes
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   // 封装数据获取逻辑
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
+      // 构建分页参数
+      const queryString = pagination.getQueryString();
+
+      // 添加名称筛选参数
+      const filterParams = new URLSearchParams();
+      if (nameFilter) filterParams.append('name', nameFilter);
+      const filterString = filterParams.toString();
+      const fullQueryString = filterString ? `${queryString}&${filterString}` : queryString;
+
       const [sitesRes, guardsRes] = await Promise.all([
-        request(`${BASE_URL}/api/sites`),
+        request(`${BASE_URL}/api/sites?${fullQueryString}`),
         request(`${BASE_URL}/api/guards`)
       ]);
-        
+
         if (!sitesRes.ok) {
           throw new Error(`获取站点数据失败: ${sitesRes.status}`);
         }
         if (!guardsRes.ok) {
           throw new Error(`获取保安数据失败: ${guardsRes.status}`);
         }
-        
+
         const sitesResponse = await sitesRes.json();
         const guardsResponse = await guardsRes.json();
-        
-        // API returns { success: true, data: [...] } format
+
+        // API returns { success: true, data: [...], pagination: {...} } format
         const sitesData = sitesResponse.success && sitesResponse.data ? sitesResponse.data : [];
         const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
-        
+
+        // 更新分页状态
+        if (sitesResponse.pagination) {
+          pagination.updateFromResponse(sitesResponse.pagination as PaginationResponse);
+        }
+
+        console.log('[SITES] Fetched with pagination:', sitesResponse.pagination);
+
         setSites(Array.isArray(sitesData) ? sitesData : []);
         setGuards(Array.isArray(guardsData) ? guardsData : []);
       } catch (error: unknown) {
@@ -204,13 +246,17 @@ export default function SiteManagement() {
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [pagination.page, pagination.pageSize, pagination.sortBy, pagination.sortOrder, nameFilter]);
 
   useEffect(() => {
     // Set page title
     document.title = '单位管理 - 都豪鼎盛内部系统';
+  }, []);
+
+  // 当分页参数变化时重新获取数据
+  useEffect(() => {
     fetchData();
-  }, [])
+  }, [fetchData])
 
   // Form validation helper
   const validateSiteForm = (formData: SiteFormData): string[] => {
@@ -448,13 +494,15 @@ export default function SiteManagement() {
     }
   };
 
-  // Search and filter functions
-  const filteredSites = sites.filter(site => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      site.name.toLowerCase().includes(searchLower)
-    );
-  });
+  // Clear search filter
+  const clearSearch = () => {
+    setSearchInput('')
+    setNameFilter('')
+    pagination.setPage(1)
+  }
+
+  // Check if search is active
+  const hasActiveSearch = !!nameFilter
 
   // Helper functions to reset forms
   const resetAddForm = () => {
@@ -503,7 +551,7 @@ export default function SiteManagement() {
             <span>单位管理</span>
           </h1>
           <p className="text-muted-foreground mt-1">
-            管理站点位置、签到范围和保安分配 · 共 {sites.length} 个站点
+            管理站点位置、签到范围和保安分配 · 共 {pagination.total} 个站点
           </p>
         </div>
         
@@ -716,19 +764,116 @@ export default function SiteManagement() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="搜索站点名称..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-10"
           />
         </div>
-        
+
+        {hasActiveSearch && (
+          <Button variant="ghost" size="sm" onClick={clearSearch} className="text-muted-foreground">
+            清除搜索
+          </Button>
+        )}
+
         <div className="flex items-center space-x-4 text-sm text-muted-foreground">
           <div className="flex items-center space-x-1">
-            <Badge variant="secondary">{filteredSites.length}</Badge>
-            <span>个结果</span>
+            <Badge variant="secondary">{pagination.total}</Badge>
+            <span>条记录</span>
           </div>
+          {pagination.totalPages > 1 && (
+            <span>（第 {pagination.page}/{pagination.totalPages} 页）</span>
+          )}
+          {hasActiveSearch && (
+            <Badge variant="outline" className="text-xs">已搜索</Badge>
+          )}
         </div>
       </div>
+
+      {/* All Sites Map Toggle */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={showOverviewMap ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowOverviewMap(!showOverviewMap)}
+          className="gap-2"
+        >
+          <Map className="h-4 w-4" />
+          {showOverviewMap ? '隐藏地图' : '显示分布地图'}
+        </Button>
+        {!showOverviewMap && sites.length > 0 && (
+          <span className="text-sm text-muted-foreground">
+            共 {sites.length} 个单位
+          </span>
+        )}
+      </div>
+
+      {/* All Sites Map */}
+      {showOverviewMap && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center space-x-2 text-lg">
+              <Map className="h-5 w-5" />
+              <span>单位分布地图</span>
+            </CardTitle>
+            <CardDescription>
+              显示所有单位的地理位置，点击标记查看详情
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80 w-full rounded-lg overflow-hidden border">
+              {sites.length > 0 ? (
+                <MapContainer
+                  center={(() => {
+                    // Calculate center from all sites
+                    if (sites.length === 0) return mapCenter;
+                    const avgLat = sites.reduce((sum, s) => sum + s.latitude, 0) / sites.length;
+                    const avgLng = sites.reduce((sum, s) => sum + s.longitude, 0) / sites.length;
+                    return [avgLat, avgLng] as [number, number];
+                  })()}
+                  zoom={sites.length === 1 ? 13 : 10}
+                  className="h-full w-full"
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  {sites.map((site) => (
+                    <Marker key={site.id} position={[site.latitude, site.longitude]}>
+                      <Popup>
+                        <div className="min-w-[150px]">
+                          <div className="font-semibold text-sm">{site.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            <div>签到半径: {site.allowedRadiusMeters}m</div>
+                            <div>坐标: {site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}</div>
+                          </div>
+                        </div>
+                      </Popup>
+                      <Circle
+                        center={[site.latitude, site.longitude]}
+                        radius={site.allowedRadiusMeters}
+                        pathOptions={{
+                          fillColor: 'green',
+                          fillOpacity: 0.1,
+                          color: 'green',
+                          weight: 1
+                        }}
+                      />
+                    </Marker>
+                  ))}
+                </MapContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center bg-muted/50">
+                  <div className="text-center text-muted-foreground">
+                    <MapPin className="h-8 w-8 mx-auto mb-2" />
+                    <p>暂无单位数据</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Global Error Alert */}
       {error && (
@@ -767,29 +912,30 @@ export default function SiteManagement() {
                 </div>
               ))}
             </div>
-          ) : filteredSites.length === 0 ? (
+          ) : sites.length === 0 ? (
             <div className="text-center py-12">
               <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold">
-                {searchQuery ? '没有找到匹配的站点' : '还没有站点记录'}
+                {hasActiveSearch ? '没有找到匹配的站点' : '还没有站点记录'}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {searchQuery 
-                  ? '尝试调整搜索条件或清空搜索框查看所有站点'
+                {hasActiveSearch
+                  ? '尝试调整搜索条件或清除搜索查看所有站点'
                   : '点击上方"添加站点"按钮开始添加第一个站点'
                 }
               </p>
-              {searchQuery && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSearchQuery('')}
+              {hasActiveSearch && (
+                <Button
+                  variant="outline"
+                  onClick={clearSearch}
                   className="mt-4"
                 >
-                  清空搜索
+                  清除搜索
                 </Button>
               )}
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -800,7 +946,7 @@ export default function SiteManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSites.map((site) => (
+                {sites.map((site) => (
                   <TableRow key={site.id} className="hover:bg-muted/50" data-testid="site-row">
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -811,13 +957,6 @@ export default function SiteManagement() {
                         </div>
                         <div>
                           <div className="font-medium">{site.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {site.isActive !== false ? (
-                              <Badge variant="secondary" className="text-xs">活跃</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">未激活</Badge>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -865,6 +1004,17 @@ export default function SiteManagement() {
                 ))}
               </TableBody>
             </Table>
+
+            {/* 分页组件 */}
+            <TablePagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+            </>
           )}
         </CardContent>
       </Card>

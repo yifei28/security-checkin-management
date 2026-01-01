@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { usePagination } from '@/hooks/usePagination';
+import type { PaginationResponse } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/TablePagination';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,40 +14,75 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Users, Edit, Trash2, Phone, IdCard, MapPin, AlertCircle, Crown, User } from 'lucide-react';
-import { GuardRole, GuardRoleDisplayNames } from '@/types/index';
+import { Plus, Search, Users, Edit, Trash2, Phone, IdCard, MapPin, AlertCircle, Crown, User, Ruler, Calendar, Award } from 'lucide-react';
+import { CertificateRangeFilter } from '@/components/CertificateRangeFilter';
+import { HeightRangeFilter } from '@/components/HeightRangeFilter';
+import {
+  GuardRole,
+  GuardRoleDisplayNames,
+  Gender,
+  GenderDisplayNames,
+  EmploymentStatus,
+  EmploymentStatusDisplayNames
+} from '@/types/index';
 // import { cn } from "@/lib/utils";
 
 // Backend API interfaces (matching what the actual API expects)
 interface GuardResponse {
   id: string
   name: string
-  phoneNumber: string // Back to phoneNumber - this is what backend actually returns
+  phoneNumber: string
   employeeId: string
   site: { id: string; name: string } | null
-  role: GuardRole // 新增角色字段
+  role: GuardRole
   active?: boolean
-  isActive?: boolean // Backend returns both active and isActive
+  isActive?: boolean
   createdAt?: string
+  // New fields
+  idCardNumber?: string
+  gender?: Gender
+  birthDate?: string
+  age?: number
+  height?: number
+  employmentStatus?: EmploymentStatus
+  originalHireDate?: string
+  latestHireDate?: string
+  resignDate?: string | null
+  // Certificate levels (1-5, undefined = no certificate)
+  firefightingCertLevel?: number
+  securityGuardCertLevel?: number
+  securityCheckCertLevel?: number
 }
 
 interface SiteResponse {
-  id: string // Changed to string to match API
+  id: string
   name: string
   latitude?: number
   longitude?: number
   allowedRadiusMeters?: number
   assignedGuardIds?: string[]
-  active?: boolean // Changed from isActive to active
+  active?: boolean
   createdAt?: string
 }
 
 // Form data interfaces
 interface GuardFormData {
   name: string
-  phoneNumber: string // Changed back to match API field name
+  phoneNumber: string
   siteId: string
-  role: GuardRole // 新增角色字段
+  role: GuardRole
+  // New fields
+  idCardNumber: string
+  gender: Gender | ''
+  birthDate: string
+  height: string // Use string for input, convert to number when submitting
+  employmentStatus: EmploymentStatus
+  originalHireDate: string
+  latestHireDate: string
+  // Certificate levels (1-5, empty string = no certificate)
+  firefightingCertLevel: string
+  securityGuardCertLevel: string
+  securityCheckCertLevel: string
 }
 
 // interface GuardUpdateData extends GuardFormData {
@@ -77,55 +115,144 @@ export default function GuardManagement() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Add form state
-  const [addForm, setAddForm] = useState<GuardFormData>({
+  // Default form values
+  const defaultFormValues: GuardFormData = {
     name: '',
     phoneNumber: '',
     siteId: '',
-    role: GuardRole.TEAM_MEMBER // 默认为队员
-  })
+    role: GuardRole.TEAM_MEMBER,
+    idCardNumber: '',
+    gender: '',
+    birthDate: '',
+    height: '',
+    employmentStatus: EmploymentStatus.ACTIVE,
+    originalHireDate: '',
+    latestHireDate: '',
+    firefightingCertLevel: '',
+    securityGuardCertLevel: '',
+    securityCheckCertLevel: ''
+  };
+
+  // Add form state
+  const [addForm, setAddForm] = useState<GuardFormData>(defaultFormValues)
 
   // Edit form state
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<GuardFormData>({
-    name: '',
-    phoneNumber: '',
-    siteId: '',
-    role: GuardRole.TEAM_MEMBER
-  })
+  const [editForm, setEditForm] = useState<GuardFormData>(defaultFormValues)
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+
+  // Certificate filter type
+  type CertRange = { min?: number; max?: number } | null
+
+  // Server-side filter state
+  const [filters, setFilters] = useState({
+    name: '',
+    siteId: '',
+    employmentStatus: '',
+    role: ''
+  })
+
+  // Certificate filters (separate for cleaner code)
+  const [certFilters, setCertFilters] = useState<{
+    firefighting: CertRange
+    securityGuard: CertRange
+    securityCheck: CertRange
+  }>({
+    firefighting: null,
+    securityGuard: null,
+    securityCheck: null
+  })
+
+  // Height filter
+  const [heightFilter, setHeightFilter] = useState<{ min?: number; max?: number } | null>(null)
+  // Debounced name search
+  const [searchInput, setSearchInput] = useState('')
+
+  // 分页状态
+  const pagination = usePagination({
+    initialPageSize: 20,
+    initialSortBy: 'name',
+    initialSortOrder: 'asc'
+  });
+
+  // Debounce search input - update filters.name after 300ms delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (filters.name !== searchInput) {
+        setFilters(prev => ({ ...prev, name: searchInput }))
+        pagination.setPage(1) // Reset to first page when search changes
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   // 封装数据获取逻辑
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
+      // 构建分页参数
+      const queryString = pagination.getQueryString();
+
+      // 构建筛选参数 - 只添加非空值
+      const filterParams = new URLSearchParams();
+      if (filters.name) filterParams.append('name', filters.name);
+      if (filters.siteId && filters.siteId !== 'all') filterParams.append('siteId', filters.siteId);
+      if (filters.employmentStatus && filters.employmentStatus !== 'all') filterParams.append('employmentStatus', filters.employmentStatus);
+      if (filters.role && filters.role !== 'all') filterParams.append('role', filters.role);
+
+      // 证书筛选参数
+      if (certFilters.firefighting) {
+        if (certFilters.firefighting.min) filterParams.append('firefightingCertMin', certFilters.firefighting.min.toString());
+        if (certFilters.firefighting.max) filterParams.append('firefightingCertMax', certFilters.firefighting.max.toString());
+      }
+      if (certFilters.securityGuard) {
+        if (certFilters.securityGuard.min) filterParams.append('securityGuardCertMin', certFilters.securityGuard.min.toString());
+        if (certFilters.securityGuard.max) filterParams.append('securityGuardCertMax', certFilters.securityGuard.max.toString());
+      }
+      if (certFilters.securityCheck) {
+        if (certFilters.securityCheck.min) filterParams.append('securityCheckCertMin', certFilters.securityCheck.min.toString());
+        if (certFilters.securityCheck.max) filterParams.append('securityCheckCertMax', certFilters.securityCheck.max.toString());
+      }
+
+      // 身高筛选参数
+      if (heightFilter) {
+        if (heightFilter.min) filterParams.append('heightMin', heightFilter.min.toString());
+        if (heightFilter.max) filterParams.append('heightMax', heightFilter.max.toString());
+      }
+
+      const filterString = filterParams.toString();
+      const fullQueryString = filterString ? `${queryString}&${filterString}` : queryString;
+
       const [guardsRes, sitesRes] = await Promise.all([
-        request(`${BASE_URL}/api/guards`),
+        request(`${BASE_URL}/api/guards?${fullQueryString}`),
         request(`${BASE_URL}/api/sites`)
       ]);
-        
+
         if (!guardsRes.ok) {
           throw new Error(`获取保安数据失败: ${guardsRes.status}`);
         }
         if (!sitesRes.ok) {
           throw new Error(`获取站点数据失败: ${sitesRes.status}`);
         }
-        
+
         const guardsResponse = await guardsRes.json();
         const sitesResponse = await sitesRes.json();
-        
-        // API returns { success: true, data: [...] } format
+
+        // API returns { success: true, data: [...], pagination: {...} } format
         const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
         const sitesData = sitesResponse.success && sitesResponse.data ? sitesResponse.data : [];
-        
-        console.log('[GUARDS] Fetched sites:', sitesData);
-        console.log('[GUARDS] First site example:', sitesData[0]);
-        
+
+        // 更新分页状态
+        if (guardsResponse.pagination) {
+          pagination.updateFromResponse(guardsResponse.pagination as PaginationResponse);
+        }
+
+        console.log('[GUARDS] Fetched with pagination:', guardsResponse.pagination);
+
         setGuards(Array.isArray(guardsData) ? guardsData : []);
         setSites(Array.isArray(sitesData) ? sitesData : []);
       } catch (error: unknown) {
@@ -137,18 +264,22 @@ export default function GuardManagement() {
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [pagination.page, pagination.pageSize, pagination.sortBy, pagination.sortOrder, filters.name, filters.siteId, filters.employmentStatus, filters.role, certFilters.firefighting, certFilters.securityGuard, certFilters.securityCheck, heightFilter]);
 
   useEffect(() => {
     // Set page title
     document.title = '员工管理 - 都豪鼎盛内部系统';
+  }, []);
+
+  // 当分页参数变化时重新获取数据
+  useEffect(() => {
     fetchData();
-  }, [])
+  }, [fetchData])
 
   // Form validation helper
   const validateGuardForm = (formData: GuardFormData): string[] => {
     const errors: string[] = [];
-    
+
     if (!formData.name?.trim()) {
       errors.push('姓名不能为空');
     }
@@ -160,7 +291,22 @@ export default function GuardManagement() {
     if (!formData.siteId?.trim()) {
       errors.push('请选择所属站点');
     }
-    
+    // New field validations
+    if (!formData.idCardNumber?.trim()) {
+      errors.push('身份证号不能为空');
+    } else if (!/^\d{17}[\dXx]$/.test(formData.idCardNumber.trim())) {
+      errors.push('请输入有效的18位身份证号');
+    }
+    if (!formData.gender) {
+      errors.push('请选择性别');
+    }
+    if (!formData.birthDate?.trim()) {
+      errors.push('请选择出生日期');
+    }
+    if (formData.height && (Number(formData.height) < 150 || Number(formData.height) > 210)) {
+      errors.push('身高必须在150-210cm之间');
+    }
+
     return errors;
   };
 
@@ -180,12 +326,24 @@ export default function GuardManagement() {
       
       // site.id 必须是数字类型，使用辅助函数处理
       const siteIdNumber = extractNumberFromId(addForm.siteId, 'site_');
-      
+
       const payload = {
         name: addForm.name.trim(),
         phoneNumber: addForm.phoneNumber.trim(),
         site: siteIdNumber !== null ? { id: siteIdNumber } : null,
-        role: addForm.role // 包含角色字段
+        role: addForm.role,
+        // New fields
+        idCardNumber: addForm.idCardNumber.trim(),
+        gender: addForm.gender || undefined,
+        birthDate: addForm.birthDate || undefined,
+        height: addForm.height ? Number(addForm.height) : undefined,
+        employmentStatus: addForm.employmentStatus,
+        originalHireDate: addForm.originalHireDate || undefined,
+        latestHireDate: addForm.latestHireDate || undefined,
+        // Certificate levels
+        firefightingCertLevel: addForm.firefightingCertLevel ? Number(addForm.firefightingCertLevel) : undefined,
+        securityGuardCertLevel: addForm.securityGuardCertLevel ? Number(addForm.securityGuardCertLevel) : undefined,
+        securityCheckCertLevel: addForm.securityCheckCertLevel ? Number(addForm.securityCheckCertLevel) : undefined
       };
 
       console.log('[GUARDS] Final payload:', payload);
@@ -224,9 +382,9 @@ export default function GuardManagement() {
       });
       
       // Reset form
-      setAddForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
+      setAddForm(defaultFormValues);
       setIsAddDialogOpen(false);
-      
+
       // 可选：重新获取数据以确保同步
       // await fetchData();
     } catch (error: unknown) {
@@ -243,9 +401,21 @@ export default function GuardManagement() {
       name: guard.name,
       phoneNumber: guard.phoneNumber,
       siteId: guard.site?.id?.toString() ?? '',
-      role: guard.role || GuardRole.TEAM_MEMBER // 确保有默认值
+      role: guard.role || GuardRole.TEAM_MEMBER,
+      // New fields
+      idCardNumber: guard.idCardNumber || '',
+      gender: guard.gender || '',
+      birthDate: guard.birthDate || '',
+      height: guard.height?.toString() || '',
+      employmentStatus: guard.employmentStatus || EmploymentStatus.ACTIVE,
+      originalHireDate: guard.originalHireDate || '',
+      latestHireDate: guard.latestHireDate || '',
+      // Certificate levels
+      firefightingCertLevel: guard.firefightingCertLevel?.toString() || '',
+      securityGuardCertLevel: guard.securityGuardCertLevel?.toString() || '',
+      securityCheckCertLevel: guard.securityCheckCertLevel?.toString() || ''
     });
-    setError(''); // Clear any existing errors
+    setError('');
     setIsEditDialogOpen(true);
   };
 
@@ -268,13 +438,25 @@ export default function GuardManagement() {
       // 使用辅助函数处理 ID
       const siteIdNumber = extractNumberFromId(editForm.siteId, 'site_');
       const guardIdForApi = stripIdPrefix(editingId, 'guard_');
-      
+
       const payload = {
-        id: guardIdForApi,  // 使用处理后的 ID
+        id: guardIdForApi,
         name: editForm.name.trim(),
         phoneNumber: editForm.phoneNumber.trim(),
         site: siteIdNumber !== null ? { id: siteIdNumber } : null,
-        role: editForm.role // 包含角色字段
+        role: editForm.role,
+        // New fields
+        idCardNumber: editForm.idCardNumber.trim(),
+        gender: editForm.gender || undefined,
+        birthDate: editForm.birthDate || undefined,
+        height: editForm.height ? Number(editForm.height) : undefined,
+        employmentStatus: editForm.employmentStatus,
+        originalHireDate: editForm.originalHireDate || undefined,
+        latestHireDate: editForm.latestHireDate || undefined,
+        // Certificate levels
+        firefightingCertLevel: editForm.firefightingCertLevel ? Number(editForm.firefightingCertLevel) : undefined,
+        securityGuardCertLevel: editForm.securityGuardCertLevel ? Number(editForm.securityGuardCertLevel) : undefined,
+        securityCheckCertLevel: editForm.securityCheckCertLevel ? Number(editForm.securityCheckCertLevel) : undefined
       };
 
       const res = await request(`${BASE_URL}/api/guards/${guardIdForApi}`, {
@@ -320,7 +502,7 @@ export default function GuardManagement() {
       
       // Reset edit state
       setEditingId(null);
-      setEditForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
+      setEditForm(defaultFormValues);
       setIsEditDialogOpen(false);
     } catch (error: unknown) {
       console.error('[GUARDS] Update error:', error);
@@ -360,26 +542,46 @@ export default function GuardManagement() {
     }
   };
 
-  // Search and filter functions
-  const filteredGuards = guards.filter(guard => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      guard.name.toLowerCase().includes(searchLower) ||
-      guard.phoneNumber.includes(searchQuery) ||
-      (guard.employeeId && guard.employeeId.toLowerCase().includes(searchLower)) ||
-      guard.site?.name.toLowerCase().includes(searchLower)
-    );
-  });
+  // Handle filter changes - reset to page 1 when filter changes
+  const handleFilterChange = (key: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+    pagination.setPage(1) // Reset to first page when filter changes
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({ name: '', siteId: '', employmentStatus: '', role: '' })
+    setCertFilters({ firefighting: null, securityGuard: null, securityCheck: null })
+    setHeightFilter(null)
+    setSearchInput('')
+    pagination.setPage(1)
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.name || filters.siteId || filters.employmentStatus || filters.role ||
+    certFilters.firefighting || certFilters.securityGuard || certFilters.securityCheck || heightFilter
+
+  // Certificate filter change handler
+  const handleCertFilterChange = (type: 'firefighting' | 'securityGuard' | 'securityCheck', value: { min?: number; max?: number } | null) => {
+    setCertFilters(prev => ({ ...prev, [type]: value }))
+    pagination.setPage(1)
+  }
+
+  // Height filter change handler
+  const handleHeightFilterChange = (value: { min?: number; max?: number } | null) => {
+    setHeightFilter(value)
+    pagination.setPage(1)
+  }
 
   // Helper function to reset add form
   const resetAddForm = () => {
-    setAddForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
+    setAddForm(defaultFormValues);
     setError('');
   };
 
   // Helper function to reset edit form
   const resetEditForm = () => {
-    setEditForm({ name: '', phoneNumber: '', siteId: '', role: GuardRole.TEAM_MEMBER });
+    setEditForm(defaultFormValues);
     setEditingId(null);
     setError('');
   };
@@ -394,7 +596,7 @@ export default function GuardManagement() {
             <span>员工管理</span>
           </h1>
           <p className="text-muted-foreground mt-1">
-            管理员工信息和分配 · 共 {guards.length} 位员工
+            管理员工信息和分配 · 共 {pagination.total} 位员工
           </p>
         </div>
         
@@ -408,7 +610,7 @@ export default function GuardManagement() {
               <span>添加保安</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-2">
                 <Users className="h-5 w-5 text-blue-600" />
@@ -500,14 +702,186 @@ export default function GuardManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              <Separator className="my-4" />
+
+              {/* New Fields Section */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">身份证号 *</label>
+                  <Input
+                    placeholder="请输入18位身份证号"
+                    value={addForm.idCardNumber}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, idCardNumber: e.target.value }))}
+                    disabled={isSubmitting}
+                    maxLength={18}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">性别 *</label>
+                  <Select
+                    value={addForm.gender}
+                    onValueChange={(value) => setAddForm(prev => ({ ...prev, gender: value as Gender }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择性别" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={Gender.MALE}>
+                        <span>{GenderDisplayNames[Gender.MALE]}</span>
+                      </SelectItem>
+                      <SelectItem value={Gender.FEMALE}>
+                        <span>{GenderDisplayNames[Gender.FEMALE]}</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">出生日期 *</label>
+                  <Input
+                    type="date"
+                    value={addForm.birthDate}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, birthDate: e.target.value }))}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center space-x-1">
+                    <Ruler className="h-3 w-3" />
+                    <span>身高 (cm)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="例如：175"
+                    value={addForm.height}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, height: e.target.value }))}
+                    disabled={isSubmitting}
+                    min={150}
+                    max={210}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">在职状态</label>
+                  <Select
+                    value={addForm.employmentStatus}
+                    onValueChange={(value) => setAddForm(prev => ({ ...prev, employmentStatus: value as EmploymentStatus }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(EmploymentStatusDisplayNames).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center space-x-1">
+                    <Calendar className="h-3 w-3" />
+                    <span>入职日期</span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={addForm.originalHireDate}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, originalHireDate: e.target.value, latestHireDate: e.target.value }))}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* Certificate Fields */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center space-x-1">
+                  <Award className="h-3 w-3" />
+                  <span>持有证书</span>
+                </label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">消防证</label>
+                    <Select
+                      value={addForm.firefightingCertLevel}
+                      onValueChange={(value) => setAddForm(prev => ({ ...prev, firefightingCertLevel: value === 'none' ? '' : value }))}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="无" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">无</SelectItem>
+                        <SelectItem value="5">5级（初级）</SelectItem>
+                        <SelectItem value="4">4级（中级）</SelectItem>
+                        <SelectItem value="3">3级（高级）</SelectItem>
+                        <SelectItem value="2">2级（技师）</SelectItem>
+                        <SelectItem value="1">1级（高级技师）</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">保安证</label>
+                    <Select
+                      value={addForm.securityGuardCertLevel}
+                      onValueChange={(value) => setAddForm(prev => ({ ...prev, securityGuardCertLevel: value === 'none' ? '' : value }))}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="无" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">无</SelectItem>
+                        <SelectItem value="5">5级（初级）</SelectItem>
+                        <SelectItem value="4">4级（中级）</SelectItem>
+                        <SelectItem value="3">3级（高级）</SelectItem>
+                        <SelectItem value="2">2级（管理师）</SelectItem>
+                        <SelectItem value="1">1级（高级管理师）</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">安检证</label>
+                    <Select
+                      value={addForm.securityCheckCertLevel}
+                      onValueChange={(value) => setAddForm(prev => ({ ...prev, securityCheckCertLevel: value === 'none' ? '' : value }))}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="无" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">无</SelectItem>
+                        <SelectItem value="5">5级（初级）</SelectItem>
+                        <SelectItem value="4">4级（中级）</SelectItem>
+                        <SelectItem value="3">3级（高级）</SelectItem>
+                        <SelectItem value="2">2级（技师）</SelectItem>
+                        <SelectItem value="1">1级（高级技师）</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   variant="outline"
@@ -535,25 +909,114 @@ export default function GuardManagement() {
         </Dialog>
       </div>
 
-      {/* Search and Stats Section */}
-      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 md:space-x-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索保安姓名、手机号、工号或站点..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-          <div className="flex items-center space-x-1">
-            <Badge variant="secondary">{filteredGuards.length}</Badge>
-            <span>个结果</span>
+      {/* Search and Filter Section */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col space-y-4">
+            {/* Search row */}
+            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 md:space-x-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索姓名..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Filter dropdowns */}
+              <Select value={filters.siteId || 'all'} onValueChange={(value) => handleFilterChange('siteId', value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="全部单位" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部单位</SelectItem>
+                  {sites.map((site) => (
+                    <SelectItem key={site.id} value={site.id.toString()}>
+                      {site.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.employmentStatus || 'all'} onValueChange={(value) => handleFilterChange('employmentStatus', value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="全部状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部状态</SelectItem>
+                  {Object.entries(EmploymentStatusDisplayNames).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.role || 'all'} onValueChange={(value) => handleFilterChange('role', value)}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="全部角色" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部角色</SelectItem>
+                  <SelectItem value={GuardRole.TEAM_LEADER}>
+                    {GuardRoleDisplayNames[GuardRole.TEAM_LEADER]}
+                  </SelectItem>
+                  <SelectItem value={GuardRole.TEAM_MEMBER}>
+                    {GuardRoleDisplayNames[GuardRole.TEAM_MEMBER]}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                  清除筛选
+                </Button>
+              )}
+            </div>
+
+            {/* Certificate and height filters row */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">证书筛选:</span>
+              <CertificateRangeFilter
+                label="消防证"
+                value={certFilters.firefighting}
+                onChange={(value) => handleCertFilterChange('firefighting', value)}
+              />
+              <CertificateRangeFilter
+                label="保安证"
+                value={certFilters.securityGuard}
+                onChange={(value) => handleCertFilterChange('securityGuard', value)}
+              />
+              <CertificateRangeFilter
+                label="安检证"
+                value={certFilters.securityCheck}
+                onChange={(value) => handleCertFilterChange('securityCheck', value)}
+              />
+              <span className="text-sm text-muted-foreground ml-4">其他筛选:</span>
+              <HeightRangeFilter
+                value={heightFilter}
+                onChange={handleHeightFilterChange}
+              />
+            </div>
+
+            {/* Stats row */}
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <Badge variant="secondary">{pagination.total}</Badge>
+                <span>条记录</span>
+              </div>
+              {pagination.totalPages > 1 && (
+                <span>（第 {pagination.page}/{pagination.totalPages} 页）</span>
+              )}
+              {hasActiveFilters && (
+                <Badge variant="outline" className="text-xs">已筛选</Badge>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Global Error Alert */}
       {error && (
@@ -592,42 +1055,47 @@ export default function GuardManagement() {
                 </div>
               ))}
             </div>
-          ) : filteredGuards.length === 0 ? (
+          ) : guards.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold">
-                {searchQuery ? '没有找到匹配的保安' : '还没有保安记录'}
+                {hasActiveFilters ? '没有找到匹配的保安' : '还没有保安记录'}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {searchQuery 
-                  ? '尝试调整搜索条件或清空搜索框查看所有保安'
+                {hasActiveFilters
+                  ? '尝试调整筛选条件或清除筛选查看所有保安'
                   : '点击上方"添加保安"按钮开始添加第一位保安'
                 }
               </p>
-              {searchQuery && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSearchQuery('')}
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
                   className="mt-4"
                 >
-                  清空搜索
+                  清除筛选
                 </Button>
               )}
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>保安信息</TableHead>
                   <TableHead>联系方式</TableHead>
-                  <TableHead>工号</TableHead>
+                  <TableHead>身份证号</TableHead>
+                  <TableHead>性别/年龄</TableHead>
+                  <TableHead>身高</TableHead>
                   <TableHead>角色</TableHead>
+                  <TableHead>持有证书</TableHead>
+                  <TableHead>在职状态</TableHead>
                   <TableHead>所属站点</TableHead>
                   <TableHead className="w-32">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredGuards.map((guard) => (
+                {guards.map((guard) => (
                   <TableRow key={guard.id} className="hover:bg-muted/50" data-testid="guard-row">
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -638,13 +1106,6 @@ export default function GuardManagement() {
                         </div>
                         <div>
                           <div className="font-medium">{guard.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {guard.isActive !== false ? (
-                              <Badge variant="secondary" className="text-xs">活跃</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">未激活</Badge>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -657,7 +1118,21 @@ export default function GuardManagement() {
                     <TableCell>
                       <div className="flex items-center space-x-1 text-sm">
                         <IdCard className="h-3 w-3 text-muted-foreground" />
-                        <span className="font-mono">{guard.employeeId}</span>
+                        <span className="font-mono">{guard.idCardNumber || '-'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{guard.gender ? GenderDisplayNames[guard.gender] : '-'}</div>
+                        <div className="text-muted-foreground">
+                          {guard.age !== undefined ? `${guard.age}岁` : '-'}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1 text-sm">
+                        <Ruler className="h-3 w-3 text-muted-foreground" />
+                        <span>{guard.height ? `${guard.height}cm` : '-'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -674,6 +1149,63 @@ export default function GuardManagement() {
                           {GuardRoleDisplayNames[guard.role] || '队员'}
                         </Badge>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {guard.firefightingCertLevel && (
+                          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                            <Award className="h-3 w-3 mr-1" />
+                            消防证{guard.firefightingCertLevel}级
+                            {guard.firefightingCertLevel === 5 && '（初级）'}
+                            {guard.firefightingCertLevel === 4 && '（中级）'}
+                            {guard.firefightingCertLevel === 3 && '（高级）'}
+                            {guard.firefightingCertLevel === 2 && '（技师）'}
+                            {guard.firefightingCertLevel === 1 && '（高级技师）'}
+                          </Badge>
+                        )}
+                        {guard.securityGuardCertLevel && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            <Award className="h-3 w-3 mr-1" />
+                            保安证{guard.securityGuardCertLevel}级
+                            {guard.securityGuardCertLevel === 5 && '（初级）'}
+                            {guard.securityGuardCertLevel === 4 && '（中级）'}
+                            {guard.securityGuardCertLevel === 3 && '（高级）'}
+                            {guard.securityGuardCertLevel === 2 && '（管理师）'}
+                            {guard.securityGuardCertLevel === 1 && '（高级管理师）'}
+                          </Badge>
+                        )}
+                        {guard.securityCheckCertLevel && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            <Award className="h-3 w-3 mr-1" />
+                            安检证{guard.securityCheckCertLevel}级
+                            {guard.securityCheckCertLevel === 5 && '（初级）'}
+                            {guard.securityCheckCertLevel === 4 && '（中级）'}
+                            {guard.securityCheckCertLevel === 3 && '（高级）'}
+                            {guard.securityCheckCertLevel === 2 && '（技师）'}
+                            {guard.securityCheckCertLevel === 1 && '（高级技师）'}
+                          </Badge>
+                        )}
+                        {!guard.firefightingCertLevel && !guard.securityGuardCertLevel && !guard.securityCheckCertLevel && (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {guard.employmentStatus ? (
+                        <Badge
+                          variant={
+                            guard.employmentStatus === EmploymentStatus.ACTIVE ? 'default' :
+                            guard.employmentStatus === EmploymentStatus.PROBATION ? 'secondary' :
+                            guard.employmentStatus === EmploymentStatus.RESIGNED ? 'destructive' :
+                            'outline'
+                          }
+                          className="text-xs"
+                        >
+                          {EmploymentStatusDisplayNames[guard.employmentStatus]}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">在职</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {guard.site ? (
@@ -713,6 +1245,17 @@ export default function GuardManagement() {
                 ))}
               </TableBody>
             </Table>
+
+            {/* 分页组件 */}
+            <TablePagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+            </>
           )}
         </CardContent>
       </Card>
@@ -722,7 +1265,7 @@ export default function GuardManagement() {
         setIsEditDialogOpen(open);
         if (!open) resetEditForm();
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Edit className="h-5 w-5 text-blue-600" />
@@ -803,16 +1346,188 @@ export default function GuardManagement() {
                 </SelectContent>
               </Select>
             </div>
-            
+
+            <Separator className="my-4" />
+
+            {/* New Fields Section */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">身份证号 *</label>
+                <Input
+                  placeholder="请输入18位身份证号"
+                  value={editForm.idCardNumber}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, idCardNumber: e.target.value }))}
+                  disabled={isSubmitting}
+                  maxLength={18}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">性别 *</label>
+                <Select
+                  value={editForm.gender}
+                  onValueChange={(value) => setEditForm(prev => ({ ...prev, gender: value as Gender }))}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择性别" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={Gender.MALE}>
+                      <span>{GenderDisplayNames[Gender.MALE]}</span>
+                    </SelectItem>
+                    <SelectItem value={Gender.FEMALE}>
+                      <span>{GenderDisplayNames[Gender.FEMALE]}</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">出生日期 *</label>
+                <Input
+                  type="date"
+                  value={editForm.birthDate}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, birthDate: e.target.value }))}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center space-x-1">
+                  <Ruler className="h-3 w-3" />
+                  <span>身高 (cm)</span>
+                </label>
+                <Input
+                  type="number"
+                  placeholder="例如：175"
+                  value={editForm.height}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, height: e.target.value }))}
+                  disabled={isSubmitting}
+                  min={150}
+                  max={210}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">在职状态</label>
+                <Select
+                  value={editForm.employmentStatus}
+                  onValueChange={(value) => setEditForm(prev => ({ ...prev, employmentStatus: value as EmploymentStatus }))}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(EmploymentStatusDisplayNames).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center space-x-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>最近入职日期</span>
+                </label>
+                <Input
+                  type="date"
+                  value={editForm.latestHireDate}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, latestHireDate: e.target.value }))}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* Certificate Fields */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center space-x-1">
+                <Award className="h-3 w-3" />
+                <span>持有证书</span>
+              </label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">消防证</label>
+                  <Select
+                    value={editForm.firefightingCertLevel}
+                    onValueChange={(value) => setEditForm(prev => ({ ...prev, firefightingCertLevel: value === 'none' ? '' : value }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="无" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      <SelectItem value="5">5级（初级）</SelectItem>
+                      <SelectItem value="4">4级（中级）</SelectItem>
+                      <SelectItem value="3">3级（高级）</SelectItem>
+                      <SelectItem value="2">2级（技师）</SelectItem>
+                      <SelectItem value="1">1级（高级技师）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">保安证</label>
+                  <Select
+                    value={editForm.securityGuardCertLevel}
+                    onValueChange={(value) => setEditForm(prev => ({ ...prev, securityGuardCertLevel: value === 'none' ? '' : value }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="无" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      <SelectItem value="5">5级（初级）</SelectItem>
+                      <SelectItem value="4">4级（中级）</SelectItem>
+                      <SelectItem value="3">3级（高级）</SelectItem>
+                      <SelectItem value="2">2级（技师）</SelectItem>
+                      <SelectItem value="1">1级（高级技师）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">安检证</label>
+                  <Select
+                    value={editForm.securityCheckCertLevel}
+                    onValueChange={(value) => setEditForm(prev => ({ ...prev, securityCheckCertLevel: value === 'none' ? '' : value }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="无" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">无</SelectItem>
+                      <SelectItem value="5">5级（初级）</SelectItem>
+                      <SelectItem value="4">4级（中级）</SelectItem>
+                      <SelectItem value="3">3级（高级）</SelectItem>
+                      <SelectItem value="2">2级（技师）</SelectItem>
+                      <SelectItem value="1">1级（高级技师）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <Separator />
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"
@@ -821,7 +1536,7 @@ export default function GuardManagement() {
               >
                 取消
               </Button>
-              <Button 
+              <Button
                 onClick={saveEditing}
                 disabled={isSubmitting}
               >

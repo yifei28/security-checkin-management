@@ -28,6 +28,34 @@ export const CheckInStatusSchema = z.enum(['success', 'failed', 'pending'], {
 });
 
 /**
+ * Gender enum schema
+ */
+export const GenderSchema = z.enum(['MALE', 'FEMALE'], {
+  errorMap: () => ({ message: '性别必须是男或女' }),
+});
+
+/**
+ * Employment status enum schema
+ */
+export const EmploymentStatusSchema = z.enum(['ACTIVE', 'PROBATION', 'SUSPENDED', 'RESIGNED', 'RETIRED'], {
+  errorMap: () => ({ message: '在职状态无效' }),
+});
+
+/**
+ * ID card number validation schema (18 digits)
+ */
+export const IdCardNumberSchema = z
+  .string()
+  .regex(/^\d{17}[\dXx]$/, '请输入有效的18位身份证号码');
+
+/**
+ * Date string schema (YYYY-MM-DD format)
+ */
+export const DateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必须是YYYY-MM-DD');
+
+/**
  * Guard validation schema
  */
 export const GuardSchema = z.object({
@@ -36,8 +64,18 @@ export const GuardSchema = z.object({
   phoneNumber: z
     .string()
     .regex(/^1[3-9]\d{9}$/, '请输入有效的手机号码'),
-  photoUrl: z.string().url('请输入有效的照片URL'),
+  photoUrl: z.string().url('请输入有效的照片URL').optional(),
   assignedSiteIds: z.array(z.string()).default([]),
+  // New fields
+  idCardNumber: IdCardNumberSchema.optional(),
+  gender: GenderSchema.optional(),
+  birthDate: DateStringSchema.optional(),
+  age: z.number().int().min(0).max(150).optional(),
+  height: z.number().int().min(100, '身高不能低于100cm').max(250, '身高不能超过250cm').optional(),
+  employmentStatus: EmploymentStatusSchema.optional(),
+  originalHireDate: DateStringSchema.optional(),
+  latestHireDate: DateStringSchema.optional(),
+  resignDate: DateStringSchema.nullable().optional(),
 });
 
 /**
@@ -134,8 +172,17 @@ export const GuardFormSchema = z.object({
     .string()
     .min(1, '请输入手机号码')
     .regex(/^1[3-9]\d{9}$/, '请输入有效的手机号码'),
-  photoUrl: z.string().url('请输入有效的照片URL').or(z.literal('')),
+  photoUrl: z.string().url('请输入有效的照片URL').or(z.literal('')).optional(),
   assignedSiteIds: z.array(z.string()).default([]),
+  // New fields
+  idCardNumber: IdCardNumberSchema.optional(),
+  gender: GenderSchema.optional(),
+  birthDate: DateStringSchema.optional(),
+  height: z.number().int().min(100, '身高不能低于100cm').max(250, '身高不能超过250cm').optional().or(z.literal('')),
+  employmentStatus: EmploymentStatusSchema.optional(),
+  originalHireDate: DateStringSchema.optional().or(z.literal('')),
+  latestHireDate: DateStringSchema.optional().or(z.literal('')),
+  resignDate: DateStringSchema.nullable().optional().or(z.literal('')),
 });
 
 /**

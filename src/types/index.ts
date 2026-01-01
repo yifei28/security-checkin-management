@@ -85,26 +85,106 @@ export const GuardRoleDisplayNames = {
 } as const;
 
 /**
+ * Gender types
+ */
+export const Gender = {
+  MALE: 'MALE',
+  FEMALE: 'FEMALE'
+} as const;
+
+export type Gender = typeof Gender[keyof typeof Gender];
+
+/**
+ * Gender display names mapping
+ */
+export const GenderDisplayNames = {
+  [Gender.MALE]: '男',
+  [Gender.FEMALE]: '女'
+} as const;
+
+/**
+ * Employment status types
+ */
+export const EmploymentStatus = {
+  ACTIVE: 'ACTIVE',
+  PROBATION: 'PROBATION',
+  SUSPENDED: 'SUSPENDED',
+  RESIGNED: 'RESIGNED',
+  RETIRED: 'RETIRED'
+} as const;
+
+export type EmploymentStatus = typeof EmploymentStatus[keyof typeof EmploymentStatus];
+
+/**
+ * Employment status display names mapping
+ */
+export const EmploymentStatusDisplayNames = {
+  [EmploymentStatus.ACTIVE]: '在职',
+  [EmploymentStatus.PROBATION]: '试用期',
+  [EmploymentStatus.SUSPENDED]: '停职',
+  [EmploymentStatus.RESIGNED]: '离职',
+  [EmploymentStatus.RETIRED]: '退休'
+} as const;
+
+/**
  * Guard interface represents a security guard in the system
  */
 export interface Guard {
   /** Unique identifier for the guard */
   id: string;
-  
+
   /** Full name of the guard */
   name: string;
-  
+
   /** Contact phone number */
   phoneNumber: string;
-  
+
   /** URL to the guard's profile photo */
   photoUrl: string;
-  
+
   /** Site ID where this guard is assigned (only one site allowed) */
   siteId: string | null;
-  
+
   /** Guard role: TEAM_MEMBER or TEAM_LEADER */
   role: GuardRole;
+
+  /** Employee ID (auto-generated, read-only) */
+  employeeId?: string;
+
+  /** WeChat OpenID (read-only, bound via mobile app) */
+  openId?: string;
+
+  /** ID card number (18 digits, unique) */
+  idCardNumber?: string;
+
+  /** Gender */
+  gender?: Gender;
+
+  /** Birth date in YYYY-MM-DD format */
+  birthDate?: string;
+
+  /** Age (calculated from birthDate, read-only) */
+  age?: number;
+
+  /** Height in centimeters */
+  height?: number;
+
+  /** Employment status */
+  employmentStatus?: EmploymentStatus;
+
+  /** Original hire date (first employment, never changes) */
+  originalHireDate?: string;
+
+  /** Latest hire date (updated when rehired) */
+  latestHireDate?: string;
+
+  /** Resignation date */
+  resignDate?: string | null;
+
+  /** Certificate levels (1-5, undefined = no certificate) */
+  firefightingCertLevel?: number;
+  securityGuardCertLevel?: number;
+  securityCheckCertLevel?: number;
 }
 
 /**
@@ -503,6 +583,15 @@ export interface GuardFormData {
   photoUrl?: string;
   siteId: string | null;
   role?: GuardRole; // Optional, defaults to TEAM_MEMBER
+  // New fields
+  idCardNumber?: string;
+  gender?: Gender;
+  birthDate?: string;
+  height?: number;
+  employmentStatus?: EmploymentStatus;
+  originalHireDate?: string;
+  latestHireDate?: string;
+  resignDate?: string | null;
 }
 
 export interface SiteFormData {
