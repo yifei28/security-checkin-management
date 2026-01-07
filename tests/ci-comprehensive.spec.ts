@@ -48,7 +48,7 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.click('button[type="submit"]');
 
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.locator('h1')).toContainText('管理后台首页');
+  await expect(page.locator('h1')).toContainText('管理控制台');
 }
 
 async function logout(page: Page): Promise<void> {
@@ -146,9 +146,9 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
       await loginAsAdmin(page);
 
       const routes = [
-        { path: '/admin', title: '管理后台首页' },
-        { path: '/admin/guards', title: '保安管理' },
-        { path: '/admin/sites', title: '站点管理' },
+        { path: '/admin', title: '管理控制台' },
+        { path: '/admin/guards', title: '员工管理' },
+        { path: '/admin/sites', title: '单位管理' },
         { path: '/admin/checkins', title: '签到记录' }
       ];
 
@@ -167,14 +167,14 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
 
       // Go to guards page
       await page.goto('/admin/guards');
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // Refresh page
       await page.reload();
 
       // Should stay authenticated and on same page
       await expect(page).toHaveURL('/admin/guards');
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
     });
   });
 
@@ -223,7 +223,7 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
       await page.waitForTimeout(3000);
 
       // Page should still be functional
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // Clear route mock
       await page.unroute('**/api/**');
@@ -288,12 +288,12 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
   });
 
   test.describe('🎯 Core Functionality Smoke Tests', () => {
-    test('保安管理页面基本功能', async ({ page }) => {
+    test('员工管理页面基本功能', async ({ page }) => {
       await loginAsAdmin(page);
       await page.goto('/admin/guards');
 
       // Page should load
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // Should have some UI elements
       const hasAddButton = await page.locator('button:has-text("添加")').count() > 0;
@@ -304,12 +304,12 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
       expect(hasAddButton || hasTable || hasSearchInput).toBe(true);
     });
 
-    test('站点管理页面基本功能', async ({ page }) => {
+    test('单位管理页面基本功能', async ({ page }) => {
       await loginAsAdmin(page);
       await page.goto('/admin/sites');
 
       // Page should load
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
 
       // Should have some UI elements
       const hasAddButton = await page.locator('button:has-text("添加")').count() > 0;
@@ -362,7 +362,7 @@ test.describe('CI/CD Comprehensive Test Suite', () => {
 
       // Should end up on dashboard without errors
       await expect(page).toHaveURL('/admin');
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
     });
   });
 

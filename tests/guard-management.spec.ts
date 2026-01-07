@@ -148,7 +148,7 @@ test.describe('Guard Management CRUD', () => {
   test.describe('Page Loading and Navigation', () => {
     test('should display guards management page with correct title', async () => {
       // Check page title and header
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
       await expect(page.locator('text=管理保安信息和分配')).toBeVisible();
       
       // Check navigation is present
@@ -478,7 +478,7 @@ test.describe('Guard Management CRUD', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       
       // Header should still be visible
-      await expect(page.locator('h1:has-text("保安管理")')).toBeVisible();
+      await expect(page.locator('h1:has-text("员工管理")')).toBeVisible();
       
       // Add button should be accessible
       await expect(page.locator('button:has-text("添加保安")')).toBeVisible();
@@ -491,7 +491,7 @@ test.describe('Guard Management CRUD', () => {
       await page.setViewportSize({ width: 768, height: 1024 });
       
       // All main functionality should work
-      await expect(page.locator('h1:has-text("保安管理")')).toBeVisible();
+      await expect(page.locator('h1:has-text("员工管理")')).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
       await expect(page.locator('button:has-text("添加保安")')).toBeVisible();
     });

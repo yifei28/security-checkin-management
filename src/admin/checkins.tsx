@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import * as Papa from 'papaparse';
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
@@ -12,16 +12,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationEllipsis, 
-  PaginationItem 
+// Collapsible component imported but using simple expand/collapse via state
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem
 } from "@/components/ui/pagination";
-import { CheckCircle2, XCircle, Clock, MapPin, Calendar, Search, Filter, Users, FileText, AlertCircle, Camera, Navigation, Map as MapIcon, BarChart3, Download } from 'lucide-react';
-import type { CheckInRecord, CheckInStatus, Guard, Site, PaginationParams, ApiResponse } from '../types';
+import { CheckCircle2, XCircle, Clock, MapPin, Calendar, Search, Filter, Users, FileText, AlertCircle, Camera, Map as MapIcon, BarChart3, Download, ChevronDown, ChevronRight, PlayCircle, StopCircle, Timer, ClipboardCheck } from 'lucide-react';
+import type { CheckInRecord, Guard, Site, PaginationParams, ApiResponse, SpotCheck } from '../types';
+import { WorkStatus, WorkStatusDisplayNames, WorkStatusColors } from '../types';
 import CheckinMapView from '../components/CheckinMapView';
 import CheckinAnalytics from '../components/CheckinAnalytics';
+import SpotCheckList from '../components/SpotCheckList';
+import WorkTrajectoryMap from '../components/WorkTrajectoryMap';
+import { checkinsApi } from '../api';
 
 // Development debug helper
 if (process.env.NODE_ENV === 'development') {
@@ -34,18 +39,8 @@ interface CheckInRecordDisplay extends CheckInRecord {
   guardPhone: string;
   siteName: string;
   siteCoordinates: { lat: number; lng: number };
+  siteAllowedRadius?: number;
   distanceFromSite?: number;
-}
-
-// Statistics interface for complete/current page flag
-interface StatsDisplay {
-  total: number;
-  successful: number;
-  failed: number;
-  pending: number;
-  successRate: number;
-  isComplete?: boolean;
-  isCurrentPageOnly?: boolean;
 }
 
 // Helper function to parse API timestamp as Beijing time
@@ -69,14 +64,60 @@ export default function CheckinRecords() {
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CheckInStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<WorkStatus | 'all'>('all');
   const [guardFilter, setGuardFilter] = useState<string>('all');
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('today');
-  
+
   // View state
   const [showMapView, setShowMapView] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+
+  // Expanded rows state
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // State to store loaded spot checks per record
+  const [loadedSpotChecks, setLoadedSpotChecks] = useState<Map<string, SpotCheck[]>>(new Map());
+  const [spotCheckLoadingRecords, setSpotCheckLoadingRecords] = useState<Set<string>>(new Set());
+
+  // Toggle row expansion and fetch spot checks if needed
+  const toggleRowExpansion = useCallback(async (recordId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId);
+      } else {
+        newSet.add(recordId);
+      }
+      return newSet;
+    });
+
+    // If expanding and spot checks not yet loaded, fetch them
+    if (!expandedRows.has(recordId) && !loadedSpotChecks.has(recordId) && !spotCheckLoadingRecords.has(recordId)) {
+      setSpotCheckLoadingRecords(prev => new Set(prev).add(recordId));
+
+      try {
+        const response = await checkinsApi.getSpotChecksForWorkRecord(recordId);
+        if (response.success && response.data) {
+          // response.data is SpotCheck[] from the API
+          const spotChecks = response.data as unknown as SpotCheck[];
+          setLoadedSpotChecks(prev => {
+            const newMap = new Map(prev);
+            newMap.set(recordId, spotChecks);
+            return newMap;
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to load spot checks for record ${recordId}:`, error);
+      } finally {
+        setSpotCheckLoadingRecords(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(recordId);
+          return newSet;
+        });
+      }
+    }
+  }, [expandedRows, loadedSpotChecks, spotCheckLoadingRecords]);
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -85,18 +126,6 @@ export default function CheckinRecords() {
   });
   const [totalCount, setTotalCount] = useState(0);
   const [pageCount, setPageCount] = useState(0);
-  
-  // Store the full API response to access statistics
-  const [apiResponse, setApiResponse] = useState<ApiResponse<CheckInRecord> | null>(null);
-  
-  // Store complete statistics from separate API call
-  const [completeStatistics, setCompleteStatistics] = useState<{
-    totalRecords: number;
-    successCount: number;
-    failedCount: number;
-    pendingCount: number;
-    successRate: number;
-  } | null>(null);
   
   // Request debouncing and caching
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -136,15 +165,15 @@ export default function CheckinRecords() {
   // Create paginated fetch function with filters (moved up for use in fetchCompleteStatistics)
   const fetchRecordsWithPagination = useCallback(async (paginationParams: PaginationParams, filters?: {
     dateRange?: 'today' | 'week' | 'month' | 'all';
-    status?: CheckInStatus | 'all';
+    status?: WorkStatus | 'all';
     guardId?: string;
     siteId?: string;
   }) => {
+    // Note: sortBy/sortOrder parameters removed - backend /api/admin/work/records
+    // doesn't support these and returns 403 when included
     const params = new URLSearchParams({
       page: paginationParams.page.toString(),
-      pageSize: paginationParams.pageSize.toString(),
-      sortBy: paginationParams.sortBy || 'timestamp',
-      sortOrder: paginationParams.sortOrder || 'desc'
+      pageSize: paginationParams.pageSize.toString()
     });
     
     // Add date range filter (API expects and returns Beijing time)
@@ -220,26 +249,10 @@ export default function CheckinRecords() {
       params.append('siteId', filters.siteId);
     }
     
-    return request(`${BASE_URL}/api/checkin?${params}`);
-  }, []);
-
-  // Extract statistics from API response - no longer need separate API call
-  const extractStatisticsFromResponse = useCallback((response: ApiResponse<CheckInRecord>) => {
-    // Check if API response includes statistics field
-    if (response.statistics) {
-      setCompleteStatistics({
-        totalRecords: response.statistics.totalRecords,
-        successCount: response.statistics.successCount,
-        failedCount: response.statistics.failedCount,
-        pendingCount: response.statistics.pendingCount,
-        successRate: response.statistics.successRate
-      });
-      console.log('[CHECKINS] Using complete statistics from API response:', response.statistics);
-    } else {
-      // API doesn't include statistics field, clear complete statistics
-      setCompleteStatistics(null);
-      console.log('[CHECKINS] API response does not include statistics, using current page statistics');
-    }
+    // Use new work records API that returns enriched data
+    // Note: decodeURIComponent is needed because URLSearchParams encodes colons in datetime strings
+    // which the backend doesn't handle correctly (returns 403)
+    return request(`${BASE_URL}/api/admin/work/records?${decodeURIComponent(params.toString())}`);
   }, []);
 
   // Debounced fetch function with caching
@@ -261,8 +274,7 @@ export default function CheckinRecords() {
     if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
       // Use cached data
       const { recordsResponse, guardsData, sitesData } = cachedData.data;
-      setApiResponse(recordsResponse);
-      
+
       if (recordsResponse.pagination) {
         setTotalCount(recordsResponse.pagination.total);
         setPageCount(recordsResponse.pagination.totalPages);
@@ -271,42 +283,39 @@ export default function CheckinRecords() {
       setGuards(guardsData);
       setSites(sitesData);
       
-      // Process records with existing logic
-      const guardMap = new Map();
+      // Process records - new API returns guardName/siteName directly
+      // Create site map for coordinates lookup (still needed for distance calculation)
       const siteMap = new Map();
-      
+      const guardMap = new Map();
+
       (guardsData as Guard[]).forEach((guard: Guard) => {
         guardMap.set(guard.id, guard);
       });
-      
+
       (sitesData as Site[]).forEach((site: Site) => {
         siteMap.set(site.id, site);
       });
-      
+
       const recordsData = recordsResponse.success && recordsResponse.data ? recordsResponse.data : [];
-      const enrichedRecords = (Array.isArray(recordsData) ? recordsData : []).map((record: CheckInRecord) => {
+      const enrichedRecords: CheckInRecordDisplay[] = (Array.isArray(recordsData) ? recordsData : []).map((record: CheckInRecord) => {
         const guard = guardMap.get(record.guardId);
         const site = siteMap.get(record.siteId);
-        
-        const normalizedStatus = record.status.toLowerCase() as CheckInStatus;
-        const validStatuses: CheckInStatus[] = ['success', 'failed', 'pending'];
-        const mappedStatus = validStatuses.includes(normalizedStatus) ? normalizedStatus : 'pending';
-        
-        const distanceFromSite = (site && record.location.lat && record.location.lng) 
+
+        const distanceFromSite = (site && record.location?.lat && record.location?.lng)
           ? calculateDistance(
-              record.location.lat, 
-              record.location.lng, 
-              site.latitude, 
+              record.location.lat,
+              record.location.lng,
+              site.latitude,
               site.longitude
             )
           : undefined;
-        
+
+        // Use API-returned guardName/siteName if available, fall back to lookup
         return {
           ...record,
-          status: mappedStatus,
-          guardName: guard?.name || `未知保安 (ID: ${record.guardId})`,
+          guardName: (record as CheckInRecordDisplay).guardName || guard?.name || `未知保安 (ID: ${record.guardId})`,
           guardPhone: guard?.phoneNumber || '',
-          siteName: site?.name || `未知站点 (ID: ${record.siteId})`,
+          siteName: (record as CheckInRecordDisplay).siteName || site?.name || `未知站点 (ID: ${record.siteId})`,
           siteCoordinates: site ? { lat: site.latitude, lng: site.longitude } : { lat: 0, lng: 0 },
           distanceFromSite
         };
@@ -351,12 +360,6 @@ export default function CheckinRecords() {
         const guardsResponse = await guardsRes.json();
         const sitesResponse = await sitesRes.json();
 
-        // Store the full response for statistics
-        setApiResponse(recordsResponse);
-        
-        // Extract statistics from API response if available
-        extractStatisticsFromResponse(recordsResponse);
-
         // API returns { success: true, data: [...], pagination?: {...} } format
         const recordsData = recordsResponse.success && recordsResponse.data ? recordsResponse.data : [];
         const guardsData = guardsResponse.success && guardsResponse.data ? guardsResponse.data : [];
@@ -372,46 +375,41 @@ export default function CheckinRecords() {
         setGuards(Array.isArray(guardsData) ? guardsData : []);
         setSites(Array.isArray(sitesData) ? sitesData : []);
 
-              // Create efficient lookup maps for better performance
+        // Create lookup maps for filter dropdowns and site coordinates
         const guardMap = new Map();
         const siteMap = new Map();
-        
+
         guardsData.forEach((guard: Guard) => {
           guardMap.set(guard.id, guard);
         });
-        
+
         sitesData.forEach((site: Site) => {
           siteMap.set(site.id, site);
         });
 
-        // Transform and enrich records with guard and site data using optimized lookups
+        // Transform records - new API returns guardName/siteName directly
+        // Still need site lookup for coordinates and distance calculation
         const enrichedRecords: CheckInRecordDisplay[] = (Array.isArray(recordsData) ? recordsData : [])
           .map((record: CheckInRecord) => {
             const guard = guardMap.get(record.guardId);
             const site = siteMap.get(record.siteId);
-            
-            // Improved status mapping with consistent lowercase format
-            // API returns lowercase status as per new documentation
-            const normalizedStatus = record.status.toLowerCase() as CheckInStatus;
-            const validStatuses: CheckInStatus[] = ['success', 'failed', 'pending'];
-            const mappedStatus = validStatuses.includes(normalizedStatus) ? normalizedStatus : 'pending';
-            
+
             // Calculate distance only if we have valid coordinates
-            const distanceFromSite = (site && record.location.lat && record.location.lng) 
+            const distanceFromSite = (site && record.location?.lat && record.location?.lng)
               ? calculateDistance(
-                  record.location.lat, 
-                  record.location.lng, 
-                  site.latitude, 
+                  record.location.lat,
+                  record.location.lng,
+                  site.latitude,
                   site.longitude
                 )
               : undefined;
-            
+
+            // Use API-returned guardName/siteName if available, fall back to lookup
             return {
               ...record,
-              status: mappedStatus,
-              guardName: guard?.name || `未知保安 (ID: ${record.guardId})`,
+              guardName: (record as CheckInRecordDisplay).guardName || guard?.name || `未知保安 (ID: ${record.guardId})`,
               guardPhone: guard?.phoneNumber || '',
-              siteName: site?.name || `未知站点 (ID: ${record.siteId})`,
+              siteName: (record as CheckInRecordDisplay).siteName || site?.name || `未知站点 (ID: ${record.siteId})`,
               siteCoordinates: site ? { lat: site.latitude, lng: site.longitude } : { lat: 0, lng: 0 },
               distanceFromSite
             };
@@ -451,7 +449,7 @@ export default function CheckinRecords() {
         setLoading(false);
       }
     },
-    [pagination, dateFilter, statusFilter, guardFilter, siteFilter, fetchRecordsWithPagination, calculateDistance, extractStatisticsFromResponse, CACHE_DURATION]
+    [pagination, dateFilter, statusFilter, guardFilter, siteFilter, fetchRecordsWithPagination, calculateDistance, CACHE_DURATION]
   );
 
   useEffect(() => {
@@ -475,84 +473,93 @@ export default function CheckinRecords() {
 
 
 
-  // Get status badge properties
-  const getStatusBadge = (status: CheckInStatus) => {
+  // Get status badge properties for new WorkStatus model
+  const getStatusBadge = (status: WorkStatus | string) => {
+    // Handle new WorkStatus values
     switch (status) {
+      case WorkStatus.ACTIVE:
+        return {
+          variant: 'default' as const,
+          icon: PlayCircle,
+          text: WorkStatusDisplayNames[WorkStatus.ACTIVE],
+          className: `${WorkStatusColors[WorkStatus.ACTIVE].bg} ${WorkStatusColors[WorkStatus.ACTIVE].text} hover:opacity-80 ${WorkStatusColors[WorkStatus.ACTIVE].border}`
+        };
+      case WorkStatus.COMPLETED:
+        return {
+          variant: 'default' as const,
+          icon: StopCircle,
+          text: WorkStatusDisplayNames[WorkStatus.COMPLETED],
+          className: `${WorkStatusColors[WorkStatus.COMPLETED].bg} ${WorkStatusColors[WorkStatus.COMPLETED].text} hover:opacity-80 ${WorkStatusColors[WorkStatus.COMPLETED].border}`
+        };
+      case WorkStatus.TIMEOUT:
+        return {
+          variant: 'destructive' as const,
+          icon: Timer,
+          text: WorkStatusDisplayNames[WorkStatus.TIMEOUT],
+          className: `${WorkStatusColors[WorkStatus.TIMEOUT].bg} ${WorkStatusColors[WorkStatus.TIMEOUT].text} hover:opacity-80 ${WorkStatusColors[WorkStatus.TIMEOUT].border}`
+        };
+      case WorkStatus.LEGACY:
+        return {
+          variant: 'secondary' as const,
+          icon: Clock,
+          text: WorkStatusDisplayNames[WorkStatus.LEGACY],
+          className: `${WorkStatusColors[WorkStatus.LEGACY].bg} ${WorkStatusColors[WorkStatus.LEGACY].text} hover:opacity-80 ${WorkStatusColors[WorkStatus.LEGACY].border}`
+        };
+      // Legacy status values for backward compatibility
       case 'success':
-        return { 
-          variant: 'default' as const, 
-          icon: CheckCircle2, 
+        return {
+          variant: 'default' as const,
+          icon: CheckCircle2,
           text: '成功',
           className: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300'
         };
       case 'failed':
-        return { 
-          variant: 'destructive' as const, 
-          icon: XCircle, 
+        return {
+          variant: 'destructive' as const,
+          icon: XCircle,
           text: '失败',
           className: 'bg-red-100 text-red-800 hover:bg-red-200 border-red-300'
         };
       case 'pending':
-        return { 
-          variant: 'secondary' as const, 
-          icon: Clock, 
+        return {
+          variant: 'secondary' as const,
+          icon: Clock,
           text: '待处理',
           className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-300'
         };
       default:
-        return { 
-          variant: 'outline' as const, 
-          icon: AlertCircle, 
+        return {
+          variant: 'outline' as const,
+          icon: AlertCircle,
           text: '未知',
           className: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300'
         };
     }
   };
 
+  // Format duration from minutes to human-readable format
+  const formatDuration = (minutes: number | undefined): string => {
+    if (minutes === undefined || minutes === null) return '-';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${mins}m`;
+  };
+
+  // Get time from record (supports both new and legacy fields)
+  const getStartTime = (record: CheckInRecord): string => {
+    return record.startTime || record.timestamp || '';
+  };
+
+  const getEndTime = (record: CheckInRecord): string | null => {
+    return record.endTime || null;
+  };
+
   // For server-side pagination, we use records directly
   // Filtering will be implemented server-side in a future update
   const displayRecords = records;
-
-  // Calculate statistics - prioritize complete statistics, then API statistics, then current page
-  const stats = useMemo((): StatsDisplay => {
-    // First priority: Complete statistics from dedicated API (all filtered records)
-    if (completeStatistics) {
-      return {
-        total: completeStatistics.totalRecords,
-        successful: completeStatistics.successCount,
-        failed: completeStatistics.failedCount,
-        pending: completeStatistics.pendingCount,
-        successRate: completeStatistics.successRate,
-        isComplete: true // Flag to indicate these are complete statistics
-      };
-    }
-    
-    // Second priority: API response statistics (if available)
-    if (apiResponse?.statistics) {
-      return {
-        total: apiResponse.statistics.totalRecords,
-        successful: apiResponse.statistics.successCount,
-        failed: apiResponse.statistics.failedCount,
-        pending: apiResponse.statistics.pendingCount,
-        successRate: apiResponse.statistics.successRate,
-        isComplete: true
-      };
-    }
-    
-    // Fallback: Current page statistics with a note
-    const currentPageStats: StatsDisplay = {
-      total: totalCount, // This is the total from all filtered records
-      successful: displayRecords.filter(r => r.status === 'success').length,
-      failed: displayRecords.filter(r => r.status === 'failed').length,
-      pending: displayRecords.filter(r => r.status === 'pending').length,
-      successRate: displayRecords.length > 0 
-        ? Math.round((displayRecords.filter(r => r.status === 'success').length / displayRecords.length) * 100)
-        : 0,
-      isCurrentPageOnly: true // Flag to indicate this is only current page
-    };
-    
-    return currentPageStats;
-  }, [completeStatistics, apiResponse, totalCount, displayRecords]);
 
   // Export to CSV function
   const exportToCSV = () => {
@@ -560,19 +567,41 @@ export default function CheckinRecords() {
       return;
     }
 
+    // Helper to get status display name
+    const getStatusDisplayName = (status: string): string => {
+      switch (status) {
+        case WorkStatus.ACTIVE: return WorkStatusDisplayNames[WorkStatus.ACTIVE];
+        case WorkStatus.COMPLETED: return WorkStatusDisplayNames[WorkStatus.COMPLETED];
+        case WorkStatus.TIMEOUT: return WorkStatusDisplayNames[WorkStatus.TIMEOUT];
+        case WorkStatus.LEGACY: return WorkStatusDisplayNames[WorkStatus.LEGACY];
+        case 'success': return '成功';
+        case 'failed': return '失败';
+        default: return '待处理';
+      }
+    };
+
     // Prepare data for CSV export
-    const csvData = displayRecords.map(record => ({
-      '签到时间': parseBeijingTime(record.timestamp).toLocaleString('zh-CN'),
-      '保安姓名': record.guardName,
-      '保安电话': record.guardPhone,
-      '站点名称': record.siteName,
-      '签到状态': record.status === 'success' ? '成功' : record.status === 'failed' ? '失败' : '待处理',
-      '纬度': record.location.lat.toFixed(6),
-      '经度': record.location.lng.toFixed(6),
-      '距离站点(米)': record.distanceFromSite ? Math.round(record.distanceFromSite) : '',
-      '验证原因': record.reason || '',
-      '是否有照片': record.faceImageUrl ? '是' : '否'
-    }));
+    const csvData = displayRecords.map(record => {
+      const startTime = record.startTime || record.timestamp;
+      const lat = record.startLatitude || record.location?.lat;
+      const lng = record.startLongitude || record.location?.lng;
+
+      return {
+        '上岗时间': startTime ? parseBeijingTime(startTime).toLocaleString('zh-CN') : '-',
+        '下岗时间': record.endTime ? parseBeijingTime(record.endTime).toLocaleString('zh-CN') : '-',
+        '工作时长(分钟)': record.durationMinutes ?? '-',
+        '保安姓名': record.guardName,
+        '保安电话': record.guardPhone,
+        '站点名称': record.siteName,
+        '工作状态': getStatusDisplayName(record.status as string),
+        '抽查统计': `${record.spotCheckPassed || 0}/${record.spotCheckTotal || 0}`,
+        '上岗纬度': lat?.toFixed(6) ?? '-',
+        '上岗经度': lng?.toFixed(6) ?? '-',
+        '距离站点(米)': record.distanceFromSite ? Math.round(record.distanceFromSite) : '',
+        '验证原因': record.reason || '',
+        '是否有照片': (record.startFaceImageUrl || record.faceImageUrl) ? '是' : '否'
+      };
+    });
 
     // Convert to CSV
     const csv = Papa.unparse(csvData, {
@@ -718,106 +747,6 @@ export default function CheckinRecords() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      {stats.isCurrentPageOnly && (
-        <Alert className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            注意：以下统计数据仅包含当前页面的 {pagination.pageSize} 条记录。
-            完整统计API暂时不可用，正在尝试获取完整数据。
-          </AlertDescription>
-        </Alert>
-      )}
-      {stats.isComplete && (
-        <Alert className="mb-4 border-green-200 bg-green-50">
-          <AlertCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            ✓ 以下统计数据为所有筛选条件下的完整统计信息。
-          </AlertDescription>
-        </Alert>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">总记录</span>
-              </div>
-            </div>
-            <div className="text-2xl font-bold mt-2">
-              {stats.total}
-              {stats.isCurrentPageOnly && (
-                <span className="text-xs text-muted-foreground ml-2">(全部)</span>
-              )}
-              {stats.isComplete && (
-                <span className="text-xs text-green-600 ml-2">(完整)</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-muted-foreground">成功签到</span>
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-green-600 mt-2">
-              {stats.successful}
-              {stats.isCurrentPageOnly && (
-                <span className="text-xs text-muted-foreground ml-2">(本页)</span>
-              )}
-              {stats.isComplete && (
-                <span className="text-xs text-green-600 ml-2">(全部)</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <XCircle className="h-4 w-4 text-red-600" />
-                <span className="text-sm font-medium text-muted-foreground">失败签到</span>
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-red-600 mt-2">
-              {stats.failed}
-              {stats.isCurrentPageOnly && (
-                <span className="text-xs text-muted-foreground ml-2">(本页)</span>
-              )}
-              {stats.isComplete && (
-                <span className="text-xs text-green-600 ml-2">(全部)</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Navigation className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-muted-foreground">成功率</span>
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-blue-600 mt-2">
-              {stats.successRate}%
-              {stats.isCurrentPageOnly && (
-                <span className="text-xs text-muted-foreground ml-2">(本页)</span>
-              )}
-              {stats.isComplete && (
-                <span className="text-xs text-green-600 ml-2">(全部)</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters Section */}
       <Card>
         <CardHeader>
@@ -848,15 +777,36 @@ export default function CheckinRecords() {
             {/* Status Filter */}
             <div className="min-w-32">
               <label className="text-sm font-medium mb-2 block">状态</label>
-              <Select value={statusFilter} onValueChange={(value: CheckInStatus | 'all') => resetPaginationAndSetFilter(setStatusFilter, value)}>
+              <Select value={statusFilter} onValueChange={(value: WorkStatus | 'all') => resetPaginationAndSetFilter(setStatusFilter, value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="success">成功</SelectItem>
-                  <SelectItem value="failed">失败</SelectItem>
-                  <SelectItem value="pending">待处理</SelectItem>
+                  <SelectItem value={WorkStatus.ACTIVE}>
+                    <div className="flex items-center space-x-2">
+                      <PlayCircle className="h-3 w-3 text-green-600" />
+                      <span>{WorkStatusDisplayNames[WorkStatus.ACTIVE]}</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={WorkStatus.COMPLETED}>
+                    <div className="flex items-center space-x-2">
+                      <StopCircle className="h-3 w-3 text-blue-600" />
+                      <span>{WorkStatusDisplayNames[WorkStatus.COMPLETED]}</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={WorkStatus.TIMEOUT}>
+                    <div className="flex items-center space-x-2">
+                      <Timer className="h-3 w-3 text-orange-600" />
+                      <span>{WorkStatusDisplayNames[WorkStatus.TIMEOUT]}</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={WorkStatus.LEGACY}>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-3 w-3 text-gray-600" />
+                      <span>{WorkStatusDisplayNames[WorkStatus.LEGACY]}</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -926,10 +876,11 @@ export default function CheckinRecords() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <div className="flex items-center space-x-1">
-                <Badge variant="secondary">{displayRecords.length}</Badge>
-                <span>条结果</span>
+                <span>共</span>
+                <Badge variant="secondary">{totalCount}</Badge>
+                <span>条记录</span>
               </div>
-              <span>（第{pagination.pageIndex + 1}页，共{pageCount}页）</span>
+              <span>（第{pagination.pageIndex + 1}页，共{pageCount}页，当前页{displayRecords.length}条）</span>
             </div>
 
             {/* Clear Filters */}
@@ -1022,12 +973,14 @@ export default function CheckinRecords() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8"></TableHead>
                     <TableHead className="w-24">状态</TableHead>
-                    <TableHead>保安信息</TableHead>
-                    <TableHead>站点信息</TableHead>
-                    <TableHead>签到时间</TableHead>
-                    <TableHead>位置信息</TableHead>
-                    <TableHead>验证信息</TableHead>
+                    <TableHead>保安</TableHead>
+                    <TableHead>单位</TableHead>
+                    <TableHead>上岗时间</TableHead>
+                    <TableHead>下岗时间</TableHead>
+                    <TableHead>工作时长</TableHead>
+                    <TableHead>抽查</TableHead>
                     <TableHead className="w-24">操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1035,196 +988,198 @@ export default function CheckinRecords() {
                   {displayRecords.map((record) => {
                     const statusBadge = getStatusBadge(record.status);
                     const StatusIcon = statusBadge.icon;
-                    
+                    const isExpanded = expandedRows.has(record.id);
+                    const startTime = getStartTime(record);
+                    const endTime = getEndTime(record);
+                    const site = sites.find(s => s.id === record.siteId);
+                    const faceImageUrl = record.startFaceImageUrl || record.faceImageUrl;
+
                     return (
-                      <TableRow key={record.id} className="hover:bg-muted/50" data-testid="checkin-row">
-                        <TableCell>
-                          <Badge className={statusBadge.className}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusBadge.text}
-                          </Badge>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                <Users className="h-4 w-4 text-blue-600" />
-                              </div>
+                      <Fragment key={record.id}>
+                        <TableRow
+                          className={`hover:bg-muted/50 cursor-pointer ${isExpanded ? 'bg-muted/30' : ''}`}
+                          data-testid="checkin-row"
+                          onClick={() => toggleRowExpansion(record.id)}
+                        >
+                          {/* Expand/Collapse Button */}
+                          <TableCell className="w-8 p-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleRowExpansion(record.id);
+                              }}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <Badge className={statusBadge.className}>
+                              <StatusIcon className="h-3 w-3 mr-1" />
+                              {statusBadge.text}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Guard */}
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{record.guardName}</span>
                             </div>
-                            <div>
-                              <div className="font-medium">{record.guardName}</div>
-                              <div className="text-sm text-muted-foreground">{record.guardPhone}</div>
+                          </TableCell>
+
+                          {/* Site */}
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span>{record.siteName}</span>
                             </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{record.siteName}</div>
-                              {record.distanceFromSite !== undefined && (
-                                <div className="text-sm text-muted-foreground">
-                                  距离: {record.distanceFromSite > 1000 
-                                    ? `${(record.distanceFromSite / 1000).toFixed(1)}km` 
-                                    : `${Math.round(record.distanceFromSite)}m`
-                                  }
-                                  {(() => {
-                                    const site = sites.find(s => s.id === record.siteId);
-                                    const threshold = site?.allowedRadiusMeters || 500; // 默认500米
-                                    return record.distanceFromSite > threshold && (
-                                      <Badge variant="destructive" className="ml-2 text-xs">
-                                        距离异常 (&gt;{threshold}m)
-                                      </Badge>
-                                    );
-                                  })()}
+                          </TableCell>
+
+                          {/* Start Time */}
+                          <TableCell>
+                            {startTime ? (
+                              <div className="text-sm">
+                                <div className="font-medium">
+                                  {parseBeijingTime(startTime).toLocaleDateString('zh-CN')}
                                 </div>
+                                <div className="text-muted-foreground">
+                                  {parseBeijingTime(startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+
+                          {/* End Time */}
+                          <TableCell>
+                            {endTime ? (
+                              <div className="text-sm">
+                                <div className="font-medium">
+                                  {parseBeijingTime(endTime).toLocaleDateString('zh-CN')}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  {parseBeijingTime(endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-green-600 border-green-300">
+                                进行中
+                              </Badge>
+                            )}
+                          </TableCell>
+
+                          {/* Duration */}
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Timer className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">
+                                {record.durationMinutes !== undefined
+                                  ? formatDuration(record.durationMinutes)
+                                  : record.status === WorkStatus.ACTIVE
+                                    ? '进行中'
+                                    : '-'
+                                }
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Spot Check Stats */}
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                              <span className={`font-medium ${
+                                record.spotCheckTotal > 0 && record.spotCheckPassed < record.spotCheckTotal
+                                  ? 'text-orange-600'
+                                  : ''
+                              }`}>
+                                {record.spotCheckPassed || 0}/{record.spotCheckTotal || 0}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center space-x-1">
+                              {faceImageUrl && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      title="查看照片"
+                                    >
+                                      <Camera className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center space-x-2">
+                                        <Camera className="h-5 w-5" />
+                                        <span>上岗验证照片</span>
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div className="text-sm text-muted-foreground space-y-1">
+                                        <div><strong>保安:</strong> {record.guardName}</div>
+                                        <div><strong>单位:</strong> {record.siteName}</div>
+                                        <div><strong>上岗时间:</strong> {startTime ? parseBeijingTime(startTime).toLocaleString('zh-CN') : '-'}</div>
+                                      </div>
+                                      <div className="flex justify-center">
+                                        <img
+                                          src={faceImageUrl}
+                                          alt={`${record.guardName}的上岗照片`}
+                                          className="max-w-full max-h-96 rounded-lg shadow-lg"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaXoOazleWKoOi9veWbvueTiTwvdGV4dD48L3N2Zz4=';
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                               )}
                             </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">
-                                {parseBeijingTime(record.timestamp).toLocaleDateString('zh-CN')}
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Expanded Detail Row */}
+                        {isExpanded && (
+                          <TableRow key={`${record.id}-detail`} className="bg-muted/20">
+                            <TableCell colSpan={9} className="p-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Spot Check List */}
+                                <div className="bg-background rounded-lg p-4 border">
+                                  <SpotCheckList
+                                    spotChecks={loadedSpotChecks.get(record.id) || []}
+                                    loading={spotCheckLoadingRecords.has(record.id)}
+                                  />
+                                </div>
+
+                                {/* Work Trajectory Map */}
+                                <div className="bg-background rounded-lg p-4 border">
+                                  <WorkTrajectoryMap
+                                    workRecord={record}
+                                    spotChecks={loadedSpotChecks.get(record.id) || []}
+                                    site={site}
+                                  />
+                                </div>
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {parseBeijingTime(record.timestamp).toLocaleTimeString('zh-CN')}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-mono">
-                              纬度: {record.location.lat.toFixed(6)}
-                            </div>
-                            <div className="font-mono text-muted-foreground">
-                              经度: {record.location.lng.toFixed(6)}
-                            </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {record.faceImageUrl && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Camera className="h-4 w-4" />
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl">
-                                  <DialogHeader>
-                                    <DialogTitle className="flex items-center space-x-2">
-                                      <Camera className="h-5 w-5" />
-                                      <span>面部验证照片</span>
-                                    </DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div className="text-sm text-muted-foreground space-y-1">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">保安:</span>
-                                        <span>{record.guardName}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">站点:</span>
-                                        <span>{record.siteName}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">时间:</span>
-                                        <span>{parseBeijingTime(record.timestamp).toLocaleString('zh-CN')}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center">
-                                      <img
-                                        src={record.faceImageUrl}
-                                        alt={`${record.guardName}的签到照片`}
-                                        className="max-w-full max-h-96 rounded-lg shadow-lg"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaXoOazleWKoOi9veWbvueTiTwvdGV4dD48L3N2Zz4=';
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                            {record.reason && (
-                              <div className="text-xs text-muted-foreground max-w-32 truncate" title={record.reason}>
-                                {record.reason}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="在地图上查看">
-                              <Navigation className="h-3 w-3" />
-                            </Button>
-                            {record.faceImageUrl && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8 w-8 p-0" 
-                                    title="查看照片"
-                                  >
-                                    <Camera className="h-3 w-3" />
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl">
-                                  <DialogHeader>
-                                    <DialogTitle className="flex items-center space-x-2">
-                                      <Camera className="h-5 w-5" />
-                                      <span>面部验证照片</span>
-                                    </DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div className="text-sm text-muted-foreground space-y-1">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">保安:</span>
-                                        <span>{record.guardName}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">站点:</span>
-                                        <span>{record.siteName}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="font-medium">时间:</span>
-                                        <span>{parseBeijingTime(record.timestamp).toLocaleString('zh-CN')}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center">
-                                      <img
-                                        src={record.faceImageUrl}
-                                        alt={`${record.guardName}的签到照片`}
-                                        className="max-w-full max-h-96 rounded-lg shadow-lg"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuaXoOazleWKoOi9veWbvueTiTwvdGV4dD48L3N2Zz4=';
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </TableBody>

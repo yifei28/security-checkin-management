@@ -52,7 +52,7 @@ test.describe('TypeScript Fixes Validation', () => {
 
       // Should successfully redirect to admin dashboard
       await expect(page).toHaveURL(/\/admin/);
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
 
       // Verify no TypeScript-related runtime errors
       expect(consoleErrors.filter(error =>
@@ -76,7 +76,7 @@ test.describe('TypeScript Fixes Validation', () => {
       // Refresh page to test initialization with stored user data
       await page.reload();
       await expect(page).toHaveURL(/\/admin/);
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
     });
 
     test('should handle invalid login with proper error display', async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe('TypeScript Fixes Validation', () => {
       await expect(page).toHaveURL('/admin/guards');
 
       // Page should load without errors
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
       await expect(page.locator('button:has-text("添加保安")')).toBeVisible();
 
       // Test guard creation (tests ApiResponseSingle<Guard> types)
@@ -152,7 +152,7 @@ test.describe('TypeScript Fixes Validation', () => {
       // Navigate to sites page
       await page.click('a[href="/admin/sites"]');
       await expect(page).toHaveURL('/admin/sites');
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
 
       // Test site creation (tests ApiResponseSingle<Site> types)
       await page.click('button:has-text("添加站点")');
@@ -351,7 +351,7 @@ test.describe('TypeScript Fixes Validation', () => {
       });
 
       // Dashboard should load with all metrics
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
 
       // Wait for all API calls to complete
       await page.waitForTimeout(3000);

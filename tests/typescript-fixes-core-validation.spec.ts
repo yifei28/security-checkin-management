@@ -34,7 +34,7 @@ test.describe('Core TypeScript Fixes Validation', () => {
 
     // 应该成功重定向到管理页面
     await expect(page).toHaveURL(/\/admin/);
-    await expect(page.locator('h1')).toContainText('管理后台首页');
+    await expect(page.locator('h1')).toContainText('管理控制台');
 
     // 检查用户数据在localStorage中的存储（日期应该是字符串）
     const userData = await page.evaluate(() => localStorage.getItem('user'));
@@ -97,10 +97,10 @@ test.describe('Core TypeScript Fixes Validation', () => {
 
     // 测试导航到不同页面
     const pages = [
-      { path: '/admin/guards', expectedText: '保安管理' },
-      { path: '/admin/sites', expectedText: '站点管理' },
+      { path: '/admin/guards', expectedText: '员工管理' },
+      { path: '/admin/sites', expectedText: '单位管理' },
       { path: '/admin/checkins', expectedText: '签到记录' },
-      { path: '/admin', expectedText: '管理后台首页' }
+      { path: '/admin', expectedText: '管理控制台' }
     ];
 
     for (const testPage of pages) {
@@ -142,7 +142,7 @@ test.describe('Core TypeScript Fixes Validation', () => {
 
     // 应该仍然保持登录状态
     await expect(page).toHaveURL(/\/admin/);
-    await expect(page.locator('h1')).toContainText('管理后台首页');
+    await expect(page.locator('h1')).toContainText('管理控制台');
 
     // 验证重新加载后没有类型相关的错误
     expect(consoleErrors.filter(error =>

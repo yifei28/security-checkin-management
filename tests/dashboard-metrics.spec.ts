@@ -39,7 +39,7 @@ test.describe('Dashboard Metrics and UI', () => {
 
   test('should display dashboard header with user info', async ({ page }) => {
     // Check main header
-    await expect(page.locator('h1')).toContainText('管理后台首页');
+    await expect(page.locator('h1')).toContainText('管理控制台');
     
     // Check welcome message with username
     await expect(page.locator('p').first()).toContainText('欢迎回来，yifei');
@@ -205,7 +205,7 @@ test.describe('Dashboard Metrics and UI', () => {
     await expect(page.locator('text=快速操作')).toBeVisible();
     
     const navCards = [
-      { title: '保安管理', description: '添加、编辑、删除保安信息' },
+      { title: '员工管理', description: '添加、编辑、删除保安信息' },
       { title: '单位管理', description: '设置单位位置与分配保安' },
       { title: '签到记录查询', description: '查询保安每日签到详情' }
     ];
@@ -246,10 +246,10 @@ test.describe('Dashboard Metrics and UI', () => {
     await page.waitForLoadState('networkidle');
     
     // Should still show the basic navigation even with API errors
-    await expect(page.locator('h1')).toContainText('管理后台首页');
+    await expect(page.locator('h1')).toContainText('管理控制台');
     
     // Navigation cards should still be present
-    await expect(page.locator('text=保安管理')).toBeVisible();
+    await expect(page.locator('text=员工管理')).toBeVisible();
     await expect(page.locator('text=单位管理')).toBeVisible(); 
     await expect(page.locator('text=签到记录查询')).toBeVisible();
     
@@ -303,7 +303,7 @@ test.describe('Dashboard Metrics and UI', () => {
     await page.waitForTimeout(500);
     
     // Navigation should still be visible and functional
-    await expect(page.locator('text=保安管理')).toBeVisible();
+    await expect(page.locator('text=员工管理')).toBeVisible();
     console.log('✅ Tablet layout correct');
     
     // Test mobile view
@@ -312,7 +312,7 @@ test.describe('Dashboard Metrics and UI', () => {
     
     // Should be single column on mobile
     await expect(page.locator('h1')).toBeVisible();
-    await expect(page.locator('text=保安管理')).toBeVisible();
+    await expect(page.locator('text=员工管理')).toBeVisible();
     console.log('✅ Mobile layout correct');
     
     // Restore desktop view

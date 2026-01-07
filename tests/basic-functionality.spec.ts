@@ -2,7 +2,7 @@
  * 基本功能测试集合
  *
  * 这个测试套件专门测试应用的核心基础功能，确保主要业务流程正常工作
- * 包含：认证、保安管理、站点管理、签到记录查看等基本功能
+ * 包含：认证、员工管理、单位管理、签到记录查看等基本功能
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -37,7 +37,7 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.click('button[type="submit"]');
 
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.locator('h1')).toContainText('管理后台首页');
+  await expect(page.locator('h1')).toContainText('管理控制台');
 }
 
 // 辅助函数：等待页面加载
@@ -65,7 +65,7 @@ test.describe('基本功能测试集合', () => {
 
       // 验证登录成功
       await expect(page).toHaveURL(/\/admin/);
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
 
       console.log('✅ 登录功能正常');
     });
@@ -99,9 +99,9 @@ test.describe('基本功能测试集合', () => {
       await loginAsAdmin(page);
 
       const pages = [
-        { path: '/admin', title: '管理后台首页' },
-        { path: '/admin/guards', title: '保安管理' },
-        { path: '/admin/sites', title: '站点管理' },
+        { path: '/admin', title: '管理控制台' },
+        { path: '/admin/guards', title: '员工管理' },
+        { path: '/admin/sites', title: '单位管理' },
         { path: '/admin/checkins', title: '签到记录' }
       ];
 
@@ -141,13 +141,13 @@ test.describe('基本功能测试集合', () => {
     });
   });
 
-  test.describe('👤 保安管理基本功能', () => {
-    test('应该能正常显示保安管理页面', async ({ page }) => {
+  test.describe('👤 员工管理基本功能', () => {
+    test('应该能正常显示员工管理页面', async ({ page }) => {
       await loginAsAdmin(page);
       await page.goto('/admin/guards');
 
       // 基本页面检查
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
       await waitForPageLoad(page, 2000);
 
       // 检查页面是否有基本内容
@@ -158,7 +158,7 @@ test.describe('基本功能测试集合', () => {
       // 至少应该有页面结构
       expect(hasTable || hasAddButton || hasContent).toBe(true);
 
-      console.log('✅ 保安管理页面显示正常');
+      console.log('✅ 员工管理页面显示正常');
     });
 
     test('应该能打开添加保安对话框', async ({ page }) => {
@@ -198,13 +198,13 @@ test.describe('基本功能测试集合', () => {
     });
   });
 
-  test.describe('📍 站点管理基本功能', () => {
-    test('应该能正常显示站点管理页面', async ({ page }) => {
+  test.describe('📍 单位管理基本功能', () => {
+    test('应该能正常显示单位管理页面', async ({ page }) => {
       await loginAsAdmin(page);
       await page.goto('/admin/sites');
 
       // 基本页面检查
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
       await waitForPageLoad(page, 2000);
 
       // 检查页面内容
@@ -215,7 +215,7 @@ test.describe('基本功能测试集合', () => {
 
       expect(hasTable || hasAddButton || hasMapView || hasContent).toBe(true);
 
-      console.log('✅ 站点管理页面显示正常');
+      console.log('✅ 单位管理页面显示正常');
     });
 
     test('应该能打开添加站点对话框', async ({ page }) => {

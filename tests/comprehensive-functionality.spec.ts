@@ -39,19 +39,19 @@ async function loginAsAdmin(page: Page) {
   
   // Wait for redirect to admin dashboard
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.locator('h1')).toContainText('管理后台首页');
+  await expect(page.locator('h1')).toContainText('管理控制台');
 }
 
 async function navigateToGuards(page: Page) {
   await page.click('a[href="/admin/guards"]');
   await expect(page).toHaveURL('/admin/guards');
-  await expect(page.locator('h1')).toContainText('保安管理');
+  await expect(page.locator('h1')).toContainText('员工管理');
 }
 
 async function navigateToSites(page: Page) {
   await page.click('a[href="/admin/sites"]');
   await expect(page).toHaveURL('/admin/sites');
-  await expect(page.locator('h1')).toContainText('站点管理');
+  await expect(page.locator('h1')).toContainText('单位管理');
 }
 
 async function navigateToCheckins(page: Page) {
@@ -88,7 +88,7 @@ test.describe('Security Check-in Management System', () => {
       
       // Verify successful login
       await expect(page).toHaveURL(/\/admin/);
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe('Security Check-in Management System', () => {
       // Test navigation back to Dashboard
       await page.click('a[href="/admin"]');
       await expect(page).toHaveURL(/\/admin$/);
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
     });
   });
 
@@ -162,7 +162,7 @@ test.describe('Security Check-in Management System', () => {
 
     test('should display guards list page correctly', async ({ page }) => {
       // Check page elements
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
       await expect(page.locator('button:has-text("添加保安")')).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
       
@@ -349,7 +349,7 @@ test.describe('Security Check-in Management System', () => {
 
     test('should display sites list page correctly', async ({ page }) => {
       // Check page elements
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
       await expect(page.locator('button:has-text("添加站点")')).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
     });

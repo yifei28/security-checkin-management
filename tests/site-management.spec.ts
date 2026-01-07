@@ -172,7 +172,7 @@ test.describe('Site Management CRUD', () => {
   test.describe('Page Loading and Navigation', () => {
     test('should display site management page with correct title', async () => {
       // Check page title and header
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
       await expect(page.locator('text=管理站点位置、签到范围和保安分配')).toBeVisible();
       
       // Check navigation is present
@@ -592,7 +592,7 @@ test.describe('Site Management CRUD', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       
       // Header should still be visible
-      await expect(page.locator('h1:has-text("站点管理")')).toBeVisible();
+      await expect(page.locator('h1:has-text("单位管理")')).toBeVisible();
       
       // Add button should be accessible
       await expect(page.locator('button:has-text("添加站点")')).toBeVisible();
@@ -605,7 +605,7 @@ test.describe('Site Management CRUD', () => {
       await page.setViewportSize({ width: 768, height: 1024 });
       
       // All main functionality should work
-      await expect(page.locator('h1:has-text("站点管理")')).toBeVisible();
+      await expect(page.locator('h1:has-text("单位管理")')).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
       await expect(page.locator('button:has-text("添加站点")')).toBeVisible();
     });

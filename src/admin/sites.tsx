@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
 import { usePagination } from '@/hooks/usePagination';
@@ -14,7 +14,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, MapPin, Edit, Trash2, Users, AlertCircle, Target, Map } from 'lucide-react';
+import { Plus, Search, MapPin, Edit, Trash2, Users, AlertCircle, Map as MapIcon, ChevronRight, ChevronDown } from 'lucide-react';
+import type { SiteDetailData } from '@/types';
+import SiteExpandedDetail from '@/components/SiteExpandedDetail';
 // import { cn } from "@/lib/utils";
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -176,6 +178,11 @@ export default function SiteManagement() {
 
   const [mapCenter] = useState<[number, number]>([39.9042, 116.4074]) // Beijing default
   const [showOverviewMap, setShowOverviewMap] = useState(false)
+
+  // Expandable row state
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [siteDetails, setSiteDetails] = useState<Map<string, SiteDetailData>>(new Map())
+  const [loadingSites, setLoadingSites] = useState<Set<string>>(new Set())
 
   // 分页状态
   const pagination = usePagination({
@@ -504,6 +511,65 @@ export default function SiteManagement() {
   // Check if search is active
   const hasActiveSearch = !!nameFilter
 
+  // Toggle row expansion and lazy load site details
+  const toggleRowExpansion = useCallback(async (siteId: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev)
+      if (next.has(siteId)) {
+        next.delete(siteId)
+      } else {
+        next.add(siteId)
+        // Lazy load site details if not already loaded
+        if (!siteDetails.has(siteId) && !loadingSites.has(siteId)) {
+          fetchSiteDetails(siteId)
+        }
+      }
+      return next
+    })
+  }, [siteDetails, loadingSites])
+
+  // Fetch site statistics details
+  const fetchSiteDetails = async (siteId: string) => {
+    setLoadingSites(prev => new Set(prev).add(siteId))
+    try {
+      const response = await request(`${BASE_URL}/api/sites/${siteId}/statistics`)
+      if (response.ok) {
+        const data = await response.json()
+        const details: SiteDetailData = data.success && data.data ? data.data : {
+          onDutyCount: 0,
+          totalGuards: 0,
+          checkinRate: 0,
+          onDutyGuards: []
+        }
+        setSiteDetails(prev => new Map(prev).set(siteId, details))
+      } else {
+        // Use mock data if API not available yet
+        console.warn(`[SITES] Statistics API not available for site ${siteId}, using mock data`)
+        setSiteDetails(prev => new Map(prev).set(siteId, {
+          onDutyCount: 0,
+          totalGuards: sites.find(s => s.id === siteId)?.assignedGuardIds?.length || 0,
+          checkinRate: 0,
+          onDutyGuards: []
+        }))
+      }
+    } catch (error) {
+      console.error('[SITES] Failed to fetch site details:', error)
+      // Fallback to mock data
+      setSiteDetails(prev => new Map(prev).set(siteId, {
+        onDutyCount: 0,
+        totalGuards: sites.find(s => s.id === siteId)?.assignedGuardIds?.length || 0,
+        checkinRate: 0,
+        onDutyGuards: []
+      }))
+    } finally {
+      setLoadingSites(prev => {
+        const next = new Set(prev)
+        next.delete(siteId)
+        return next
+      })
+    }
+  }
+
   // Helper functions to reset forms
   const resetAddForm = () => {
     setAddForm({ name: '', latitude: '', longitude: '', allowedRadiusMeters: '', assignedGuardIds: [] });
@@ -692,7 +758,7 @@ export default function SiteManagement() {
               {/* Right column: Map */}
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center space-x-1">
-                  <Map className="h-3 w-3" />
+                  <MapIcon className="h-3 w-3" />
                   <span>位置选择</span>
                 </label>
                 <div className="h-64 w-full border rounded-lg overflow-hidden">
@@ -798,7 +864,7 @@ export default function SiteManagement() {
           onClick={() => setShowOverviewMap(!showOverviewMap)}
           className="gap-2"
         >
-          <Map className="h-4 w-4" />
+          <MapIcon className="h-4 w-4" />
           {showOverviewMap ? '隐藏地图' : '显示分布地图'}
         </Button>
         {!showOverviewMap && sites.length > 0 && (
@@ -813,7 +879,7 @@ export default function SiteManagement() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <Map className="h-5 w-5" />
+              <MapIcon className="h-5 w-5" />
               <span>单位分布地图</span>
             </CardTitle>
             <CardDescription>
@@ -939,69 +1005,110 @@ export default function SiteManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10"></TableHead>
                   <TableHead>站点信息</TableHead>
                   <TableHead>位置坐标</TableHead>
-                  <TableHead>签到范围</TableHead>
                   <TableHead className="w-32">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sites.map((site) => (
-                  <TableRow key={site.id} className="hover:bg-muted/50" data-testid="site-row">
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                            <MapPin className="h-4 w-4 text-green-600" />
+                {sites.map((site) => {
+                  const isExpanded = expandedRows.has(site.id)
+                  return (
+                    <Fragment key={site.id}>
+                      {/* Main row */}
+                      <TableRow
+                        className={`cursor-pointer ${isExpanded ? 'bg-muted/30' : 'hover:bg-muted/50'}`}
+                        data-testid="site-row"
+                        onClick={() => toggleRowExpansion(site.id)}
+                      >
+                        <TableCell className="w-10">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleRowExpansion(site.id)
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="flex-shrink-0">
+                              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                                <MapPin className="h-4 w-4 text-green-600" />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="font-medium">{site.name}</div>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <div className="font-medium">{site.name}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm space-y-1">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-muted-foreground">纬度:</span>
-                          <span className="font-mono">{site.latitude.toFixed(6)}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-muted-foreground">经度:</span>
-                          <span className="font-mono">{site.longitude.toFixed(6)}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Target className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{site.allowedRadiusMeters}m</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => startEditing(site)}
-                          className="h-8 px-2"
-                          data-testid={`edit-site-${site.id}`}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteSite(site.id)}
-                          className="h-8 px-2 text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                          data-testid={`delete-site-${site.id}`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm space-y-1">
+                            <div className="flex items-center space-x-1">
+                              <span className="text-muted-foreground">纬度:</span>
+                              <span className="font-mono">{site.latitude.toFixed(6)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-muted-foreground">经度:</span>
+                              <span className="font-mono">{site.longitude.toFixed(6)}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startEditing(site)}
+                              className="h-8 px-2"
+                              data-testid={`edit-site-${site.id}`}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteSite(site.id)}
+                              className="h-8 px-2 text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                              data-testid={`delete-site-${site.id}`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded detail row */}
+                      {isExpanded && (
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={4} className="p-0">
+                            <SiteExpandedDetail
+                              site={{
+                                id: site.id,
+                                name: site.name,
+                                latitude: site.latitude,
+                                longitude: site.longitude,
+                                allowedRadiusMeters: site.allowedRadiusMeters,
+                                assignedGuardIds: site.assignedGuardIds || []
+                              }}
+                              details={siteDetails.get(site.id)}
+                              loading={loadingSites.has(site.id)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </TableBody>
             </Table>
 
@@ -1151,7 +1258,7 @@ export default function SiteManagement() {
             {/* Right column: Map */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center space-x-1">
-                <Map className="h-3 w-3" />
+                <MapIcon className="h-3 w-3" />
                 <span>位置选择</span>
               </label>
               <div className="h-64 w-full border rounded-lg overflow-hidden">

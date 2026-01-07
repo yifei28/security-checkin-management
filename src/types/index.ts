@@ -222,36 +222,192 @@ export interface Location {
 }
 
 /**
- * Check-in record status enum values
+ * Work status enum values (new model replacing CheckInStatus)
+ */
+export const WorkStatus = {
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  TIMEOUT: 'TIMEOUT',
+  LEGACY: 'LEGACY'
+} as const;
+
+export type WorkStatus = typeof WorkStatus[keyof typeof WorkStatus];
+
+/**
+ * Work status display names mapping
+ */
+export const WorkStatusDisplayNames = {
+  [WorkStatus.ACTIVE]: '在岗中',
+  [WorkStatus.COMPLETED]: '已下岗',
+  [WorkStatus.TIMEOUT]: '超时下岗',
+  [WorkStatus.LEGACY]: '旧数据'
+} as const;
+
+/**
+ * Work status colors for UI display
+ */
+export const WorkStatusColors = {
+  [WorkStatus.ACTIVE]: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
+  [WorkStatus.COMPLETED]: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+  [WorkStatus.TIMEOUT]: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
+  [WorkStatus.LEGACY]: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300' }
+} as const;
+
+/**
+ * Spot check status enum values
+ */
+export const SpotCheckStatus = {
+  PENDING: 'PENDING',
+  PASSED: 'PASSED',
+  MISSED: 'MISSED'
+} as const;
+
+export type SpotCheckStatus = typeof SpotCheckStatus[keyof typeof SpotCheckStatus];
+
+/**
+ * Spot check status display names
+ */
+export const SpotCheckStatusDisplayNames = {
+  [SpotCheckStatus.PENDING]: '待处理',
+  [SpotCheckStatus.PASSED]: '已通过',
+  [SpotCheckStatus.MISSED]: '超时未响应'
+} as const;
+
+/**
+ * Spot check status colors for UI display
+ */
+export const SpotCheckStatusColors = {
+  [SpotCheckStatus.PENDING]: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
+  [SpotCheckStatus.PASSED]: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
+  [SpotCheckStatus.MISSED]: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' }
+} as const;
+
+/**
+ * Spot check trigger type enum
+ */
+export const SpotCheckTriggerType = {
+  AUTOMATIC: 'AUTOMATIC',
+  MANUAL: 'MANUAL'
+} as const;
+
+export type SpotCheckTriggerType = typeof SpotCheckTriggerType[keyof typeof SpotCheckTriggerType];
+
+/**
+ * Spot check trigger type display names
+ */
+export const SpotCheckTriggerTypeDisplayNames = {
+  [SpotCheckTriggerType.AUTOMATIC]: '自动触发',
+  [SpotCheckTriggerType.MANUAL]: '手动触发'
+} as const;
+
+/**
+ * SpotCheck interface represents a random spot check during work session
+ */
+export interface SpotCheck {
+  /** Unique identifier */
+  id: string;
+
+  /** Associated work session ID */
+  checkinRecordId: string;
+
+  /** Creation timestamp */
+  createdAt: string;
+
+  /** Deadline for response (createdAt + 15 minutes) */
+  deadline: string;
+
+  /** Completion timestamp (if completed) */
+  completedAt?: string;
+
+  /** Current status */
+  status: SpotCheckStatus;
+
+  /** How the spot check was triggered */
+  triggerType: SpotCheckTriggerType;
+
+  /** Verification location latitude */
+  latitude?: number;
+
+  /** Verification location longitude */
+  longitude?: number;
+
+  /** Face verification image URL */
+  faceImageUrl?: string;
+
+  /** Reason for failure (if applicable) */
+  failReason?: string;
+}
+
+/**
+ * Legacy check-in record status enum values (for backward compatibility)
+ * @deprecated Use WorkStatus instead
  */
 export type CheckInStatus = 'success' | 'failed' | 'pending';
 
 /**
- * CheckInRecord interface represents a guard's check-in event at a site
+ * CheckInRecord interface represents a work session (工作片段)
+ * Updated from simple check-in to work session model
  */
 export interface CheckInRecord {
-  /** Unique identifier for the check-in record */
+  /** Unique identifier for the work session */
   id: string;
-  
-  /** ID of the guard who performed the check-in */
+
+  /** ID of the guard who is working */
   guardId: string;
-  
-  /** ID of the site where the check-in occurred */
+
+  /** ID of the site where the work occurs */
   siteId: string;
-  
-  /** Timestamp when the check-in was performed */
-  timestamp: string;
-  
-  /** GPS location coordinates of the check-in */
-  location: Location;
-  
-  /** URL to the face verification photo */
-  faceImageUrl: string;
-  
-  /** Status of the check-in verification */
-  status: CheckInStatus;
-  
-  /** Optional reason for failed verification or additional notes */
+
+  /** Start time (上岗时间) - replaces old 'timestamp' */
+  startTime: string;
+
+  /** Start location latitude */
+  startLatitude: number;
+
+  /** Start location longitude */
+  startLongitude: number;
+
+  /** Start face verification image URL */
+  startFaceImageUrl: string;
+
+  /** End time (下岗时间) - null if still active */
+  endTime?: string | null;
+
+  /** End location latitude */
+  endLatitude?: number;
+
+  /** End location longitude */
+  endLongitude?: number;
+
+  /** End face verification image URL */
+  endFaceImageUrl?: string;
+
+  /** Work session status */
+  status: WorkStatus;
+
+  /** Work duration in minutes */
+  durationMinutes?: number;
+
+  /** Total spot checks triggered */
+  spotCheckTotal: number;
+
+  /** Spot checks passed */
+  spotCheckPassed: number;
+
+  /** Associated spot checks (loaded on demand) */
+  spotChecks?: SpotCheck[];
+
+  // Legacy fields for backward compatibility
+  /** @deprecated Use startTime instead */
+  timestamp?: string;
+
+  /** @deprecated Use startLatitude/startLongitude instead */
+  location?: Location;
+
+  /** @deprecated Use startFaceImageUrl instead */
+  faceImageUrl?: string;
+
+  /** Optional reason/notes */
   reason?: string;
 }
 
@@ -652,6 +808,67 @@ export interface EnhancedSiteSummary {
   lastCheckIn?: string;
 }
 
+// ===================================================================
+// Site Detail Types (for expandable site rows)
+// ===================================================================
+
+/**
+ * On-duty guard information for site detail map
+ */
+export interface OnDutyGuard {
+  /** Guard ID */
+  id: string;
+  /** Guard name */
+  name: string;
+  /** Current latitude position */
+  lat: number;
+  /** Current longitude position */
+  lng: number;
+  /** Work session start time */
+  startTime: string;
+}
+
+/**
+ * Site detail data returned from statistics API
+ * Used in expanded site rows for displaying statistics, maps, and reports
+ */
+export interface SiteDetailData {
+  /** Number of guards currently on duty at this site */
+  onDutyCount: number;
+  /** Total number of guards assigned to this site */
+  totalGuards: number;
+  /** Check-in rate percentage for today */
+  checkinRate: number;
+  /** List of on-duty guards with their positions */
+  onDutyGuards: OnDutyGuard[];
+}
+
+/**
+ * Work record data for site weekly report export
+ */
+export interface SiteWorkRecord {
+  /** Work session date */
+  date: string;
+  /** Guard name */
+  guardName: string;
+  /** Start time (上岗时间) */
+  startTime: string;
+  /** End time (下岗时间) */
+  endTime?: string;
+  /** Work duration in minutes */
+  durationMinutes?: number;
+  /** Work status */
+  status: WorkStatus | string;
+  /** Total spot checks triggered */
+  spotCheckTotal: number;
+  /** Spot checks passed */
+  spotCheckPassed: number;
+  /** Start location latitude */
+  startLatitude?: number;
+  /** Start location longitude */
+  startLongitude?: number;
+}
+
 export interface CheckInRecordSummary {
   date: string;
   totalCheckIns: number;
@@ -762,27 +979,31 @@ export function isSite(value: unknown): value is Site {
 }
 
 /**
- * Type guard to check if a value is a valid CheckInRecord
+ * Type guard to check if a value is a valid CheckInRecord (work session)
  */
 export function isCheckInRecord(value: unknown): value is CheckInRecord {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    'guardId' in value &&
-    'siteId' in value &&
-    'timestamp' in value &&
-    'location' in value &&
-    'faceImageUrl' in value &&
-    'status' in value &&
-    typeof (value as CheckInRecord).id === 'string' &&
-    typeof (value as CheckInRecord).guardId === 'string' &&
-    typeof (value as CheckInRecord).siteId === 'string' &&
-    typeof (value as CheckInRecord).timestamp === 'string' &&
-    typeof (value as CheckInRecord).location === 'object' &&
-    typeof (value as CheckInRecord).faceImageUrl === 'string' &&
-    ['success', 'failed', 'pending'].includes((value as CheckInRecord).status)
-  );
+  if (typeof value !== 'object' || value === null) return false;
+
+  const record = value as CheckInRecord;
+
+  // Required fields
+  if (typeof record.id !== 'string') return false;
+  if (typeof record.guardId !== 'string') return false;
+  if (typeof record.siteId !== 'string') return false;
+
+  // New model uses startTime, legacy uses timestamp
+  const hasStartTime = typeof record.startTime === 'string';
+  const hasTimestamp = typeof record.timestamp === 'string';
+  if (!hasStartTime && !hasTimestamp) return false;
+
+  // New model uses WorkStatus, legacy uses CheckInStatus
+  const validWorkStatuses = Object.values(WorkStatus);
+  const validLegacyStatuses = ['success', 'failed', 'pending'];
+  const statusValid = validWorkStatuses.includes(record.status as WorkStatus) ||
+                      validLegacyStatuses.includes(record.status as string);
+  if (!statusValid) return false;
+
+  return true;
 }
 
 /**

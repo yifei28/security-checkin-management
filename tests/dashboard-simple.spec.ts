@@ -29,7 +29,7 @@ test.describe('Dashboard Basic Functionality', () => {
     await page.waitForTimeout(3000);
 
     // Check main dashboard header
-    await expect(page.locator('h1')).toContainText('管理后台首页');
+    await expect(page.locator('h1')).toContainText('管理控制台');
     
     // Check welcome message
     await expect(page.locator('p').first()).toContainText('欢迎回来，yifei');
@@ -50,7 +50,7 @@ test.describe('Dashboard Basic Functionality', () => {
     }
 
     // Check navigation cards are still present
-    await expect(page.locator('text=保安管理')).toBeVisible();
+    await expect(page.locator('text=员工管理')).toBeVisible();
     await expect(page.locator('text=单位管理')).toBeVisible();
     await expect(page.locator('text=签到记录查询')).toBeVisible();
     console.log('✅ Navigation cards present');

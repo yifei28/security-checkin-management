@@ -369,7 +369,7 @@ test.describe('Guard Management Integration Tests', () => {
         await page.goto('/admin/guards');
         
         // Core functionality should be available
-        await expect(page.locator('h1:has-text("保安管理")')).toBeVisible();
+        await expect(page.locator('h1:has-text("员工管理")')).toBeVisible();
         await expect(page.locator('button:has-text("添加保安")')).toBeVisible();
         await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
       }

@@ -22,7 +22,7 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.click('button[type="submit"]');
 
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.locator('h1')).toContainText('管理后台首页');
+  await expect(page.locator('h1')).toContainText('管理控制台');
 }
 
 // Helper to check for TypeScript-related errors
@@ -96,9 +96,9 @@ test.describe('稳定的综合功能测试', () => {
       await loginAsAdmin(page);
 
       const pages = [
-        { path: '/admin', expectedTitle: '管理后台首页' },
-        { path: '/admin/guards', expectedTitle: '保安管理' },
-        { path: '/admin/sites', expectedTitle: '站点管理' },
+        { path: '/admin', expectedTitle: '管理控制台' },
+        { path: '/admin/guards', expectedTitle: '员工管理' },
+        { path: '/admin/sites', expectedTitle: '单位管理' },
         { path: '/admin/checkins', expectedTitle: '签到记录' }
       ];
 
@@ -120,16 +120,16 @@ test.describe('稳定的综合功能测试', () => {
 
       await loginAsAdmin(page);
 
-      // 导航到保安管理页面
+      // 导航到员工管理页面
       await page.goto('/admin/guards');
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // 刷新页面
       await page.reload();
 
       // 应该仍然在同一页面并保持登录状态
       await expect(page).toHaveURL('/admin/guards');
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // 验证没有TypeScript错误
       expect(errors).toHaveLength(0);
@@ -137,7 +137,7 @@ test.describe('稳定的综合功能测试', () => {
   });
 
   test.describe('📊 页面加载和基本功能', () => {
-    test('保安管理页面基本功能检查', async ({ page }) => {
+    test('员工管理页面基本功能检查', async ({ page }) => {
       const errors = collectTypeScriptErrors(page);
 
       await loginAsAdmin(page);
@@ -147,7 +147,7 @@ test.describe('稳定的综合功能测试', () => {
       await page.waitForTimeout(2000);
 
       // 检查页面标题
-      await expect(page.locator('h1')).toContainText('保安管理');
+      await expect(page.locator('h1')).toContainText('员工管理');
 
       // 检查是否有基本的UI元素（至少一个应该存在）
       const hasAddButton = await page.locator('button:has-text("添加"), button[title*="添加"]').count() > 0;
@@ -161,7 +161,7 @@ test.describe('稳定的综合功能测试', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test('站点管理页面基本功能检查', async ({ page }) => {
+    test('单位管理页面基本功能检查', async ({ page }) => {
       const errors = collectTypeScriptErrors(page);
 
       await loginAsAdmin(page);
@@ -171,7 +171,7 @@ test.describe('稳定的综合功能测试', () => {
       await page.waitForTimeout(2000);
 
       // 检查页面标题
-      await expect(page.locator('h1')).toContainText('站点管理');
+      await expect(page.locator('h1')).toContainText('单位管理');
 
       // 检查是否有基本的UI元素
       const hasAddButton = await page.locator('button:has-text("添加")').count() > 0;
@@ -236,7 +236,7 @@ test.describe('稳定的综合功能测试', () => {
 
       // 最终应该在仪表板页面
       await expect(page).toHaveURL('/admin');
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
 
       // 验证没有TypeScript错误
       expect(errors).toHaveLength(0);
@@ -268,7 +268,7 @@ test.describe('稳定的综合功能测试', () => {
 
       // 4. 返回仪表板
       await page.goto('/admin');
-      await expect(page.locator('h1')).toContainText('管理后台首页');
+      await expect(page.locator('h1')).toContainText('管理控制台');
 
       // 5. 最终验证：应该没有任何TypeScript相关错误
       expect(errors).toHaveLength(0);
