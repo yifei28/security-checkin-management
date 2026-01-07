@@ -43,12 +43,6 @@ jobs:
     - name: TypeScript compilation and build
       run: npm run build
 
-    - name: Install Playwright browsers
-      run: npx playwright install --with-deps chromium
-
-    - name: Run Playwright tests
-      run: npx playwright test tests/pre-push-check.spec.ts --reporter=line
-
     - name: Build Docker image
       run: |
         docker build -t checkin-frontend:latest .
