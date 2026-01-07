@@ -34,7 +34,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="w-64 border-r bg-card p-6">
+      <aside className="w-64 border-r bg-card p-6 flex flex-col">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground">都豪鼎盛内部系统</h2>
           <p className="text-sm text-muted-foreground mt-1">管理后台</p>
@@ -93,14 +93,38 @@ export default function AdminLayout() {
           </Alert>
         )}
         
-        <Button 
-          onClick={handleLogout} 
-          variant="outline" 
+        <Button
+          onClick={handleLogout}
+          variant="outline"
           size="sm"
           className="w-full text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
         >
           退出登录
         </Button>
+
+        {/* 备案信息 */}
+        <div className="mt-auto pt-6 text-xs text-muted-foreground space-y-1">
+          <p>
+            <a
+              href="https://beian.miit.gov.cn/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              京ICP备11028431号-3
+            </a>
+          </p>
+          <p>
+            <a
+              href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010502058970"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              京公网安备11010502058970号
+            </a>
+          </p>
+        </div>
       </aside>
 
       <main className="flex-1 bg-background p-6">

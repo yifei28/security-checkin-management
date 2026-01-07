@@ -180,8 +180,30 @@ export default function LoginPage() {
         
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
-            都豪鼎盛内部系统 - 需要安全访问
+            都豪鼎盛内部系统
           </p>
+          <div className="text-xs text-muted-foreground mt-2 space-y-1">
+            <p>
+              <a
+                href="https://beian.miit.gov.cn/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                京ICP备11028431号-3
+              </a>
+            </p>
+            <p>
+              <a
+                href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010502058970"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                京公网安备11010502058970号
+              </a>
+            </p>
+          </div>
           {process.env.NODE_ENV === 'development' && (
             <div className="text-xs text-muted-foreground mt-2">
               <p>用户名最少3个字符，密码最少6个字符</p>
