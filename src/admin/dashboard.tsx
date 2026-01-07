@@ -10,17 +10,20 @@ import {
   MapPin,
   CheckCircle2,
   Clock,
-  TrendingUp,
   AlertTriangle,
   Shield,
   Eye,
   Activity,
-  XCircle
+  XCircle,
+  PlayCircle,
+  StopCircle,
+  Timer
 } from 'lucide-react'
 import { request } from '../util/request'
 import { BASE_URL } from '../util/config'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { WorkStatus, WorkStatusDisplayNames } from '@/types'
 
 // Types for real dashboard data
 interface DashboardData {
@@ -28,9 +31,6 @@ interface DashboardData {
   totalSites: number
   todayCheckins: number
   weeklyCheckins: number
-  successfulCheckins: number
-  failedCheckins: number
-  successRate: number
   latestCheckins: CheckinRecord[]
   // New statistics
   averageAge: number
@@ -39,6 +39,7 @@ interface DashboardData {
   todayCheckinRate: number // 今日签到率 = 今日签到人数 / 总员工数
   todayCheckedInCount: number // 今日已签到人数（去重）
   weeklyTrend: { date: string; count: number }[] // 本周每天签到次数
+  onDutyCount: number // 当前在岗人数
 }
 
 interface CheckinRecord {
@@ -48,7 +49,7 @@ interface CheckinRecord {
   guardName: string
   siteName: string
   timestamp: string
-  status: 'success' | 'failed' | 'pending'
+  status: WorkStatus | 'success' | 'failed' | 'pending'
   location: {
     lat: number
     lng: number
@@ -142,7 +143,8 @@ export default function AdminDashboard() {
               guardName: string
               siteName: string
               timestamp: string
-              status: string
+              status?: string
+              workStatus?: string  // Backend might use this field name
               reason?: string
             }) => ({
               id: item.id,
@@ -151,7 +153,8 @@ export default function AdminDashboard() {
               guardName: item.guardName,
               siteName: item.siteName,
               timestamp: item.timestamp,
-              status: item.status as 'success' | 'failed' | 'pending',
+              // Try both status and workStatus fields
+              status: (item.status || item.workStatus || 'LEGACY') as WorkStatus | 'success' | 'failed' | 'pending',
               location: { lat: 0, lng: 0 },
               reason: item.reason
             }))
@@ -161,16 +164,14 @@ export default function AdminDashboard() {
               totalSites: sites.total,
               todayCheckins: checkins.today.total,
               weeklyCheckins: checkins.weekly.total,
-              successfulCheckins: checkins.overall.successCount,
-              failedCheckins: checkins.overall.failedCount,
-              successRate: checkins.overall.successRate,
               latestCheckins: formattedLatestCheckins,
               averageAge: guards.averageAge,
               teamLeaderCount: guards.teamLeaderCount,
               teamMemberCount: guards.teamMemberCount,
               todayCheckinRate: checkins.today.checkinRate,
               todayCheckedInCount: checkins.today.uniqueGuards,
-              weeklyTrend
+              weeklyTrend,
+              onDutyCount: checkins.today.onDutyCount || 0
             })
             return
           }
@@ -227,13 +228,10 @@ export default function AdminDashboard() {
       const enrichedCheckins: CheckinRecord[] = checkinsData.map((record: CheckinRecord) => {
         const guard = guardsData.find(g => g.id === record.guardId)
         const site = sitesData.find(s => s.id === record.siteId)
-        const statusMapping: { [key: string]: 'success' | 'failed' | 'pending' } = {
-          'success': 'success', 'failed': 'failed', 'pending': 'pending',
-          'SUCCESS': 'success', 'FAILED': 'failed', 'PENDING': 'pending'
-        }
+        // Keep original status - supports both new WorkStatus and legacy values
         return {
           ...record,
-          status: statusMapping[record.status] || 'pending',
+          status: record.status,
           guardName: guard?.name || '未知保安',
           siteName: site?.name || '未知站点'
         }
@@ -261,21 +259,16 @@ export default function AdminDashboard() {
         weeklyTrend.push({ date: dateStr, count })
       }
 
-      const apiStats = checkinsResponse.statistics
-      const totalCheckins = checkinsResponse.pagination?.total ?? enrichedCheckins.length
-      const successfulCheckins = apiStats?.successCount ?? enrichedCheckins.filter(r => r.status === 'success').length
-      const failedCheckins = apiStats?.failedCount ?? enrichedCheckins.filter(r => r.status === 'failed').length
-      const successRate = totalCheckins > 0 ? Math.round((successfulCheckins / totalCheckins) * 100) : 0
-
       const latestCheckins = enrichedCheckins
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5)
 
       setDashboardData({
         totalGuards, totalSites, todayCheckins, weeklyCheckins,
-        successfulCheckins, failedCheckins, successRate, latestCheckins,
+        latestCheckins,
         averageAge, teamLeaderCount, teamMemberCount,
-        todayCheckinRate, todayCheckedInCount: todayCheckedInGuards.size, weeklyTrend
+        todayCheckinRate, todayCheckedInCount: todayCheckedInGuards.size, weeklyTrend,
+        onDutyCount: 0 // Fallback doesn't have real-time on-duty count
       })
     }
 
@@ -289,35 +282,100 @@ export default function AdminDashboard() {
     })
   }
 
-  const getStatusBadge = (status: 'success' | 'failed' | 'pending') => {
-    switch (status) {
-      case 'success':
-        return { 
-          variant: 'default' as const, 
-          icon: CheckCircle2, 
+  const getStatusBadge = (status: WorkStatus | 'success' | 'failed' | 'pending' | string) => {
+    // Normalize status to uppercase for comparison (for enum values)
+    const normalizedStatus = typeof status === 'string' ? status.toUpperCase() : status;
+
+    switch (normalizedStatus) {
+      // New WorkStatus values (uppercase)
+      case 'ACTIVE':
+        return {
+          variant: 'default' as const,
+          icon: PlayCircle,
+          text: WorkStatusDisplayNames[WorkStatus.ACTIVE],
+          className: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300'
+        }
+      case 'COMPLETED':
+        return {
+          variant: 'default' as const,
+          icon: StopCircle,
+          text: WorkStatusDisplayNames[WorkStatus.COMPLETED],
+          className: 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-300'
+        }
+      case 'TIMEOUT':
+        return {
+          variant: 'destructive' as const,
+          icon: Timer,
+          text: WorkStatusDisplayNames[WorkStatus.TIMEOUT],
+          className: 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300'
+        }
+      case 'LEGACY':
+        return {
+          variant: 'secondary' as const,
+          icon: Clock,
+          text: WorkStatusDisplayNames[WorkStatus.LEGACY],
+          className: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300'
+        }
+      // Legacy status values for backward compatibility
+      case 'SUCCESS':
+        return {
+          variant: 'default' as const,
+          icon: CheckCircle2,
           text: '成功',
           className: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300'
         }
-      case 'failed':
-        return { 
-          variant: 'destructive' as const, 
-          icon: XCircle, 
+      case 'FAILED':
+        return {
+          variant: 'destructive' as const,
+          icon: XCircle,
           text: '失败',
           className: 'bg-red-100 text-red-800 hover:bg-red-200 border-red-300'
         }
-      case 'pending':
-        return { 
-          variant: 'secondary' as const, 
-          icon: Clock, 
+      case 'PENDING':
+        return {
+          variant: 'secondary' as const,
+          icon: Clock,
           text: '待处理',
           className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-300'
         }
       default:
-        return { 
-          variant: 'outline' as const, 
-          icon: AlertTriangle, 
-          text: '未知',
-          className: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300'
+        // Handle Chinese display names from backend statistics API
+        switch (status) {
+          case '在岗中':
+            return {
+              variant: 'default' as const,
+              icon: PlayCircle,
+              text: '在岗中',
+              className: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300'
+            }
+          case '已下岗':
+            return {
+              variant: 'default' as const,
+              icon: StopCircle,
+              text: '已下岗',
+              className: 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-300'
+            }
+          case '超时下岗':
+            return {
+              variant: 'destructive' as const,
+              icon: Timer,
+              text: '超时下岗',
+              className: 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300'
+            }
+          case '旧数据':
+            return {
+              variant: 'secondary' as const,
+              icon: Clock,
+              text: '旧数据',
+              className: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300'
+            }
+          default:
+            return {
+              variant: 'outline' as const,
+              icon: AlertTriangle,
+              text: '未知',
+              className: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300'
+            }
         }
     }
   }
@@ -471,8 +529,22 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Second row: 2 cards */}
+          {/* Second row: On Duty Count + Today's Check-in Rate */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* On Duty Count */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">当前在岗</CardTitle>
+                <PlayCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">{dashboardData.onDutyCount}</div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  人正在工作中
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Today's Check-in Rate */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -483,20 +555,6 @@ export default function AdminDashboard() {
                 <div className="text-3xl font-bold text-blue-600">{dashboardData.todayCheckinRate}%</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {dashboardData.todayCheckedInCount}/{dashboardData.totalGuards} 人已签到，共 {dashboardData.todayCheckins} 次
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Success Rate */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">签到成功率</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">{dashboardData.successRate}%</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {dashboardData.successfulCheckins} 成功 / {dashboardData.failedCheckins} 失败
                 </p>
               </CardContent>
             </Card>

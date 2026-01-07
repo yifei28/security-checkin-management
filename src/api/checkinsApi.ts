@@ -17,6 +17,9 @@ import type {
   Location,
   PaginationResponse,
   PaginationMeta,
+  SpotCheck,
+  WorkStatus,
+  SpotCheckStatus,
 } from '../types';
 
 /**
@@ -534,11 +537,254 @@ export const checkinsApi = {
           status: 'present' | 'absent' | 'late';
         }>;
       }>>('/api/reports/attendance', params);
-      
+
       console.log('[CHECKINS API] Retrieved attendance report');
       return response.data;
     } catch (error) {
       console.error('[CHECKINS API] Failed to get attendance report:', error);
+      throw error;
+    }
+  },
+
+  // ============================================================
+  // Work Session (工作片段) APIs - New model
+  // ============================================================
+
+  /**
+   * Get work records with filtering and pagination
+   * Uses the new admin API endpoint
+   */
+  async getWorkRecords(params?: {
+    page?: number;
+    pageSize?: number;
+    guardId?: string;
+    siteId?: string;
+    status?: WorkStatus;
+    dateRange?: {
+      startDate: string;
+      endDate: string;
+    };
+    sortBy?: 'startTime' | 'endTime' | 'durationMinutes' | 'guardId' | 'siteId' | 'status';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<PaginatedResponse<CheckInRecord>> {
+    try {
+      const response = await api.get<ApiResponse<CheckInRecord>>('/api/admin/work/records', {
+        params: {
+          page: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 20,
+          guardId: params?.guardId,
+          siteId: params?.siteId,
+          status: params?.status,
+          startDate: params?.dateRange?.startDate,
+          endDate: params?.dateRange?.endDate,
+          sortBy: params?.sortBy ?? 'startTime',
+          sortOrder: params?.sortOrder ?? 'desc',
+        }
+      });
+
+      console.log('[CHECKINS API] Retrieved work records');
+
+      const apiData = response.data;
+      const paginatedResponse: PaginatedResponse<CheckInRecord> = {
+        success: apiData.success,
+        data: Array.isArray(apiData.data) ? apiData.data as unknown as CheckInRecord[] : [],
+        message: apiData.message || '',
+        pagination: convertPagination(apiData.pagination)!,
+      };
+
+      return paginatedResponse;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to get work records:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get work record detail by ID (includes spot checks)
+   */
+  async getWorkRecordDetail(workRecordId: string): Promise<ApiResponseSingle<CheckInRecord>> {
+    try {
+      const response = await api.getSingle<CheckInRecord>(`/api/admin/work/${workRecordId}`);
+
+      console.log(`[CHECKINS API] Retrieved work record detail: ${workRecordId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[CHECKINS API] Failed to get work record ${workRecordId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get currently active guards (guards currently working)
+   */
+  async getActiveGuards(): Promise<ApiResponse<CheckInRecord[]>> {
+    try {
+      const response = await api.get<ApiResponse<CheckInRecord>>('/api/admin/work/active');
+
+      console.log('[CHECKINS API] Retrieved active guards');
+      return response.data as unknown as ApiResponse<CheckInRecord[]>;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to get active guards:', error);
+      throw error;
+    }
+  },
+
+  // ============================================================
+  // Spot Check (随机抽查) APIs
+  // ============================================================
+
+  /**
+   * Get spot check records with filtering and pagination
+   */
+  async getSpotCheckRecords(params?: {
+    page?: number;
+    pageSize?: number;
+    guardId?: string;
+    siteId?: string;
+    status?: SpotCheckStatus;
+    triggerType?: 'AUTOMATIC' | 'MANUAL';
+    dateRange?: {
+      startDate: string;
+      endDate: string;
+    };
+    sortBy?: 'createdAt' | 'deadline' | 'completedAt' | 'status';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<PaginatedResponse<SpotCheck>> {
+    try {
+      const response = await api.get<ApiResponse<SpotCheck>>('/api/admin/spot-check/records', {
+        params: {
+          page: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 20,
+          guardId: params?.guardId,
+          siteId: params?.siteId,
+          status: params?.status,
+          triggerType: params?.triggerType,
+          startDate: params?.dateRange?.startDate,
+          endDate: params?.dateRange?.endDate,
+          sortBy: params?.sortBy ?? 'createdAt',
+          sortOrder: params?.sortOrder ?? 'desc',
+        }
+      });
+
+      console.log('[CHECKINS API] Retrieved spot check records');
+
+      const apiData = response.data;
+      const paginatedResponse: PaginatedResponse<SpotCheck> = {
+        success: apiData.success,
+        data: Array.isArray(apiData.data) ? apiData.data as unknown as SpotCheck[] : [],
+        message: apiData.message || '',
+        pagination: convertPagination(apiData.pagination)!,
+      };
+
+      return paginatedResponse;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to get spot check records:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get spot checks for a specific work record
+   */
+  async getSpotChecksForWorkRecord(workRecordId: string): Promise<ApiResponse<SpotCheck[]>> {
+    try {
+      const response = await api.get<ApiResponse<SpotCheck>>(`/api/admin/work/${workRecordId}/spot-checks`);
+
+      console.log(`[CHECKINS API] Retrieved spot checks for work record: ${workRecordId}`);
+      return response.data as unknown as ApiResponse<SpotCheck[]>;
+    } catch (error) {
+      console.error(`[CHECKINS API] Failed to get spot checks for work record ${workRecordId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Manually trigger spot check for guards
+   */
+  async triggerSpotCheck(guardIds: string[]): Promise<ApiResponse<SpotCheck[]>> {
+    try {
+      const response = await api.post<ApiResponse<SpotCheck>>('/api/admin/spot-check/trigger', {
+        guardIds
+      });
+
+      console.log(`[CHECKINS API] Triggered spot check for ${guardIds.length} guards`);
+      return response.data as unknown as ApiResponse<SpotCheck[]>;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to trigger spot check:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Cancel a pending spot check
+   */
+  async cancelSpotCheck(spotCheckId: string, reason?: string): Promise<ApiResponseSingle<{ success: boolean }>> {
+    try {
+      const response = await api.deleteSingle<{ success: boolean }>(
+        `/api/admin/spot-check/${spotCheckId}`,
+        { params: { reason } }
+      );
+
+      console.log(`[CHECKINS API] Cancelled spot check: ${spotCheckId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[CHECKINS API] Failed to cancel spot check ${spotCheckId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get spot check statistics
+   */
+  async getSpotCheckStatistics(params?: {
+    guardId?: string;
+    siteId?: string;
+    dateRange?: {
+      startDate: string;
+      endDate: string;
+    };
+  }): Promise<ApiResponseSingle<{
+    totalCount: number;
+    completedCount: number;
+    missedCount: number;
+    pendingCount: number;
+    completionRate: number;
+  }>> {
+    try {
+      const response = await api.getSingle<{
+        totalCount: number;
+        completedCount: number;
+        missedCount: number;
+        pendingCount: number;
+        completionRate: number;
+      }>('/api/admin/spot-check/statistics', {
+        params: {
+          guardId: params?.guardId,
+          siteId: params?.siteId,
+          startDate: params?.dateRange?.startDate,
+          endDate: params?.dateRange?.endDate,
+        }
+      });
+
+      console.log('[CHECKINS API] Retrieved spot check statistics');
+      return response.data;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to get spot check statistics:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get today's spot checks
+   */
+  async getTodaySpotChecks(): Promise<ApiResponse<SpotCheck[]>> {
+    try {
+      const response = await api.get<ApiResponse<SpotCheck>>('/api/admin/spot-check/today');
+
+      console.log('[CHECKINS API] Retrieved today\'s spot checks');
+      return response.data as unknown as ApiResponse<SpotCheck[]>;
+    } catch (error) {
+      console.error('[CHECKINS API] Failed to get today\'s spot checks:', error);
       throw error;
     }
   },
@@ -564,6 +810,17 @@ export const {
   exportCheckIns,
   getCheckInPhoto,
   getAttendanceReport,
+  // New work session APIs
+  getWorkRecords,
+  getWorkRecordDetail,
+  getActiveGuards,
+  // Spot check APIs
+  getSpotCheckRecords,
+  getSpotChecksForWorkRecord,
+  triggerSpotCheck,
+  cancelSpotCheck,
+  getSpotCheckStatistics,
+  getTodaySpotChecks,
 } = checkinsApi;
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft } from "lucide-react";
 
 interface Admin {
   id: number;
@@ -26,7 +28,9 @@ export default function ManagerPage() {
     try {
       const res = await request(`${BASE_URL}/api/admin`);
       const data = await res.json();
-      setAdmins(data);
+      // API returns { success: true, data: [...] } format
+      const adminsData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+      setAdmins(adminsData);
     } catch (err: unknown) {
       console.error('Failed to fetch admins:', err);
       setError("无法获取管理员列表");
@@ -86,9 +90,17 @@ export default function ManagerPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">系统管理员</h1>
-        <p className="text-muted-foreground mt-1">管理系统管理员账户和权限设置</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">系统管理员</h1>
+          <p className="text-muted-foreground mt-1">管理系统管理员账户和权限设置</p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link to="/admin">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回首页
+          </Link>
+        </Button>
       </div>
 
       <Card>

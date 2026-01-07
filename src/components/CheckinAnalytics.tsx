@@ -20,6 +20,17 @@ import {
   Zap
 } from 'lucide-react';
 import type { CheckInRecord, Guard, Site } from '../types';
+import { WorkStatus } from '../types';
+
+// Helper functions to check status (handles both WorkStatus and legacy values)
+const isSuccessful = (status: string) => status === WorkStatus.COMPLETED || status === 'success';
+const isFailed = (status: string) => status === WorkStatus.TIMEOUT || status === 'failed';
+const isPending = (status: string) => status === WorkStatus.ACTIVE || status === 'pending';
+
+// Helper to get timestamp from record (supports both new and legacy fields)
+const getRecordTimestamp = (record: CheckInRecord): string => {
+  return record.startTime || record.timestamp || '';
+};
 
 // Extended interface for display with related data
 interface CheckInRecordDisplay extends CheckInRecord {
@@ -114,15 +125,18 @@ export default function CheckinAnalytics({
         break;
     }
     
-    return records.filter(record => new Date(record.timestamp) >= startDate);
+    return records.filter(record => {
+      const timestamp = getRecordTimestamp(record);
+      return timestamp ? new Date(timestamp) >= startDate : false;
+    });
   }, [records, selectedPeriod]);
 
   // Calculate overall statistics
   const overallStats = useMemo(() => {
     const validRecords = filteredRecords || [];
-    const successful = validRecords.filter(r => r.status === 'success').length;
-    const failed = validRecords.filter(r => r.status === 'failed').length;
-    const pending = validRecords.filter(r => r.status === 'pending').length;
+    const successful = validRecords.filter(r => isSuccessful(r.status as string)).length;
+    const failed = validRecords.filter(r => isFailed(r.status as string)).length;
+    const pending = validRecords.filter(r => isPending(r.status as string)).length;
     const total = validRecords.length;
     
     return {
@@ -158,14 +172,17 @@ export default function CheckinAnalytics({
       };
       
       existing.totalCheckins++;
-      if (record.status === 'success') existing.successfulCheckins++;
-      if (record.status === 'failed') existing.failedCheckins++;
-      
-      const recordDate = new Date(record.timestamp);
-      if (!existing.lastCheckin || recordDate > existing.lastCheckin) {
-        existing.lastCheckin = recordDate;
+      if (isSuccessful(record.status as string)) existing.successfulCheckins++;
+      if (isFailed(record.status as string)) existing.failedCheckins++;
+
+      const timestamp = getRecordTimestamp(record);
+      if (timestamp) {
+        const recordDate = new Date(timestamp);
+        if (!existing.lastCheckin || recordDate > existing.lastCheckin) {
+          existing.lastCheckin = recordDate;
+        }
       }
-      
+
       guardMap.set(guardId, existing);
     });
     
@@ -202,14 +219,17 @@ export default function CheckinAnalytics({
       };
       
       existing.totalCheckins++;
-      if (record.status === 'success') existing.successfulCheckins++;
-      if (record.status === 'failed') existing.failedCheckins++;
-      
-      const recordDate = new Date(record.timestamp);
-      if (!existing.lastCheckin || recordDate > existing.lastCheckin) {
-        existing.lastCheckin = recordDate;
+      if (isSuccessful(record.status as string)) existing.successfulCheckins++;
+      if (isFailed(record.status as string)) existing.failedCheckins++;
+
+      const timestamp = getRecordTimestamp(record);
+      if (timestamp) {
+        const recordDate = new Date(timestamp);
+        if (!existing.lastCheckin || recordDate > existing.lastCheckin) {
+          existing.lastCheckin = recordDate;
+        }
       }
-      
+
       siteMap.set(siteId, existing);
     });
     
@@ -250,16 +270,19 @@ export default function CheckinAnalytics({
     }
     
     filteredRecords.forEach(record => {
-      const hour = new Date(record.timestamp).getHours();
+      const timestamp = getRecordTimestamp(record);
+      if (!timestamp) return;
+
+      const hour = new Date(timestamp).getHours();
       const existing = hourMap.get(hour)!;
-      
+
       existing.totalCheckins++;
-      if (record.status === 'success') existing.successfulCheckins++;
-      
-      existing.successRate = existing.totalCheckins > 0 
+      if (isSuccessful(record.status as string)) existing.successfulCheckins++;
+
+      existing.successRate = existing.totalCheckins > 0
         ? Math.round((existing.successfulCheckins / existing.totalCheckins) * 100)
         : 0;
-      
+
       hourMap.set(hour, existing);
     });
     
@@ -273,7 +296,10 @@ export default function CheckinAnalytics({
     const dayMap = new Map<string, DayStats>();
     
     filteredRecords.forEach(record => {
-      const date = new Date(record.timestamp).toISOString().split('T')[0];
+      const timestamp = getRecordTimestamp(record);
+      if (!timestamp) return;
+
+      const date = new Date(timestamp).toISOString().split('T')[0];
       const existing = dayMap.get(date) || {
         date,
         totalCheckins: 0,
@@ -281,15 +307,15 @@ export default function CheckinAnalytics({
         failedCheckins: 0,
         successRate: 0,
       };
-      
+
       existing.totalCheckins++;
-      if (record.status === 'success') existing.successfulCheckins++;
-      if (record.status === 'failed') existing.failedCheckins++;
-      
-      existing.successRate = existing.totalCheckins > 0 
+      if (isSuccessful(record.status as string)) existing.successfulCheckins++;
+      if (isFailed(record.status as string)) existing.failedCheckins++;
+
+      existing.successRate = existing.totalCheckins > 0
         ? Math.round((existing.successfulCheckins / existing.totalCheckins) * 100)
         : 0;
-      
+
       dayMap.set(date, existing);
     });
     

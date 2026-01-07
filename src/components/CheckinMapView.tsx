@@ -8,7 +8,33 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Users, Calendar, Camera, CheckCircle2, XCircle, Clock, AlertCircle, Layers } from 'lucide-react';
-import type { CheckInRecord, CheckInStatus, Site } from '../types';
+import type { CheckInRecord, Site } from '../types';
+import { WorkStatus } from '../types';
+
+// Combined status type for both new WorkStatus and legacy values
+type DisplayStatus = 'success' | 'failed' | 'pending' | 'active' | WorkStatus;
+
+// Helper to normalize status to display status
+const normalizeStatus = (status: string): DisplayStatus => {
+  switch (status) {
+    case WorkStatus.COMPLETED:
+    case 'success':
+      return 'success';
+    case WorkStatus.TIMEOUT:
+    case 'failed':
+      return 'failed';
+    case WorkStatus.ACTIVE:
+    case 'pending':
+      return 'pending';
+    default:
+      return 'pending';
+  }
+};
+
+// Helper to get timestamp from record
+const getRecordTimestamp = (record: CheckInRecord): string => {
+  return record.startTime || record.timestamp || '';
+};
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -39,21 +65,23 @@ Icon.Default.mergeOptions({
 });
 
 // Create custom icons for different check-in statuses
-const createStatusIcon = (status: CheckInStatus): DivIcon => {
-  const getStatusColor = (status: CheckInStatus): string => {
+const createStatusIcon = (status: DisplayStatus): DivIcon => {
+  const getStatusColor = (status: DisplayStatus): string => {
     switch (status) {
       case 'success': return '#10b981'; // green-500
       case 'failed': return '#ef4444'; // red-500
-      case 'pending': return '#f59e0b'; // amber-500
+      case 'pending':
+      case 'active': return '#f59e0b'; // amber-500
       default: return '#6b7280'; // gray-500
     }
   };
 
-  const getStatusSymbol = (status: CheckInStatus): string => {
+  const getStatusSymbol = (status: DisplayStatus): string => {
     switch (status) {
       case 'success': return '✓';
       case 'failed': return '✗';
-      case 'pending': return '?';
+      case 'pending':
+      case 'active': return '?';
       default: return '•';
     }
   };
@@ -111,12 +139,12 @@ const createSiteIcon = (): DivIcon => {
 export default function CheckinMapView({ records, sites, loading = false, error, onClose }: CheckinMapViewProps) {
   const [showSites, setShowSites] = useState(true);
   const [showGeofences, setShowGeofences] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<CheckInStatus | 'all'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<DisplayStatus | 'all'>('all');
 
   // Filter records based on selected status
   const filteredRecords = useMemo(() => {
     if (selectedStatus === 'all') return records;
-    return records.filter(record => record.status === selectedStatus);
+    return records.filter(record => normalizeStatus(record.status as string) === selectedStatus);
   }, [records, selectedStatus]);
 
   // Calculate map center and bounds based on records and sites
@@ -161,29 +189,31 @@ export default function CheckinMapView({ records, sites, loading = false, error,
   }, [filteredRecords, sites, showSites]);
 
   // Get status badge properties
-  const getStatusBadge = (status: CheckInStatus) => {
-    switch (status) {
+  const getStatusBadge = (status: string) => {
+    const normalized = normalizeStatus(status);
+    switch (normalized) {
       case 'success':
-        return { 
-          icon: CheckCircle2, 
+        return {
+          icon: CheckCircle2,
           text: '成功',
           className: 'bg-green-100 text-green-800 border-green-300'
         };
       case 'failed':
-        return { 
-          icon: XCircle, 
+        return {
+          icon: XCircle,
           text: '失败',
           className: 'bg-red-100 text-red-800 border-red-300'
         };
       case 'pending':
-        return { 
-          icon: Clock, 
+      case 'active':
+        return {
+          icon: Clock,
           text: '待处理',
           className: 'bg-yellow-100 text-yellow-800 border-yellow-300'
         };
       default:
-        return { 
-          icon: AlertCircle, 
+        return {
+          icon: AlertCircle,
           text: '未知',
           className: 'bg-gray-100 text-gray-800 border-gray-300'
         };
@@ -195,9 +225,9 @@ export default function CheckinMapView({ records, sites, loading = false, error,
     const validRecords = filteredRecords || [];
     return {
       total: validRecords.length,
-      successful: validRecords.filter(r => r.status === 'success').length,
-      failed: validRecords.filter(r => r.status === 'failed').length,
-      pending: validRecords.filter(r => r.status === 'pending').length,
+      successful: validRecords.filter(r => normalizeStatus(r.status as string) === 'success').length,
+      failed: validRecords.filter(r => normalizeStatus(r.status as string) === 'failed').length,
+      pending: validRecords.filter(r => normalizeStatus(r.status as string) === 'pending').length,
     };
   }, [filteredRecords]);
 
@@ -377,15 +407,18 @@ export default function CheckinMapView({ records, sites, loading = false, error,
             ))}
 
             {/* Check-in Record Markers */}
-            {filteredRecords && filteredRecords.length > 0 && filteredRecords.map((record) => {
-              const statusBadge = getStatusBadge(record.status);
+            {filteredRecords && filteredRecords.length > 0 && filteredRecords
+              .filter(record => record.location?.lat && record.location?.lng)
+              .map((record) => {
+              const statusBadge = getStatusBadge(record.status as string);
               const StatusIcon = statusBadge.icon;
-              
+              const normalizedStatus = normalizeStatus(record.status as string);
+
               return (
                 <Marker
                   key={record.id}
-                  position={[record.location.lat, record.location.lng]}
-                  icon={createStatusIcon(record.status)}
+                  position={[record.location!.lat, record.location!.lng]}
+                  icon={createStatusIcon(normalizedStatus)}
                 >
                   <Popup>
                     <div className="p-2 min-w-64">
@@ -435,15 +468,18 @@ export default function CheckinMapView({ records, sites, loading = false, error,
                           签到时间
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(record.timestamp).toLocaleString('zh-CN')}
+                          {(() => {
+                            const timestamp = getRecordTimestamp(record);
+                            return timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '-';
+                          })()}
                         </div>
                       </div>
 
                       {/* Location Info */}
                       <div className="mb-3">
                         <div className="text-sm text-muted-foreground font-mono">
-                          纬度: {record.location.lat.toFixed(6)}<br />
-                          经度: {record.location.lng.toFixed(6)}
+                          纬度: {record.location!.lat.toFixed(6)}<br />
+                          经度: {record.location!.lng.toFixed(6)}
                         </div>
                       </div>
 
