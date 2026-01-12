@@ -16,16 +16,20 @@ import type {
   SiteAssignmentRequest,
   SiteBulkUpdateRequest,
   Location,
+  CheckinLocation,
+  CheckinLocationFormData,
 } from '../types';
 
 /**
  * Helper function to strip ID prefix
+ * Handles both string and number IDs
  */
-const stripIdPrefix = (id: string, prefix: string): string => {
-  if (id && id.startsWith(prefix)) {
-    return id.replace(prefix, '');
+const stripIdPrefix = (id: string | number, prefix: string): string => {
+  const idStr = String(id);
+  if (idStr && idStr.startsWith(prefix)) {
+    return idStr.replace(prefix, '');
   }
-  return id;
+  return idStr;
 };
 
 /**
@@ -428,14 +432,132 @@ export const sitesApi = {
         '/api/sites/export',
         { filters }
       );
-      
+
       if (response.data.success) {
         console.log('[SITES API] Generated sites export');
       }
-      
+
       return response.data;
     } catch (error) {
       console.error('[SITES API] Failed to export sites:', error);
+      throw error;
+    }
+  },
+
+  // =========================================================================
+  // Checkin Location Management APIs
+  // =========================================================================
+
+  /**
+   * Get all checkin locations for a site
+   */
+  async getLocations(siteId: string): Promise<ApiResponseSingle<CheckinLocation[]>> {
+    try {
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.getSingle<CheckinLocation[]>(`/api/sites/${siteIdForApi}/locations`);
+
+      console.log(`[SITES API] Retrieved locations for site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get locations for site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Add a new checkin location to a site
+   */
+  async addLocation(siteId: string, locationData: CheckinLocationFormData): Promise<ApiResponseSingle<CheckinLocation>> {
+    try {
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.postSingle<CheckinLocation>(`/api/sites/${siteIdForApi}/locations`, locationData);
+
+      if (response.data.success && response.data.data) {
+        console.log(`[SITES API] Added location "${locationData.name}" to site: ${siteId}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to add location to site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing checkin location
+   */
+  async updateLocation(siteId: string, locationId: number, locationData: CheckinLocationFormData): Promise<ApiResponseSingle<CheckinLocation>> {
+    try {
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.putSingle<CheckinLocation>(`/api/sites/${siteIdForApi}/locations/${locationId}`, locationData);
+
+      if (response.data.success && response.data.data) {
+        console.log(`[SITES API] Updated location ${locationId} for site: ${siteId}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to update location ${locationId} for site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a checkin location
+   */
+  async deleteLocation(siteId: string, locationId: number): Promise<ApiResponseSingle<null>> {
+    try {
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.deleteSingle<null>(`/api/sites/${siteIdForApi}/locations/${locationId}`);
+
+      console.log(`[SITES API] Deleted location ${locationId} from site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to delete location ${locationId} from site ${siteId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get site statistics (guards, checkin rate, etc.)
+   */
+  async getSiteStatistics(siteId: string): Promise<ApiResponseSingle<{
+    siteId: number;
+    siteName: string;
+    guardCount: number;
+    todayStats: {
+      checkinCount: number;
+      uniqueGuards: number;
+      checkinRate: number;
+      onDutyNow: number;
+    };
+    weeklyStats: {
+      totalCheckins: number;
+      avgDailyCheckins: number;
+    };
+  }>> {
+    try {
+      const siteIdForApi = stripIdPrefix(siteId, 'site_');
+      const response = await api.getSingle<{
+        siteId: number;
+        siteName: string;
+        guardCount: number;
+        todayStats: {
+          checkinCount: number;
+          uniqueGuards: number;
+          checkinRate: number;
+          onDutyNow: number;
+        };
+        weeklyStats: {
+          totalCheckins: number;
+          avgDailyCheckins: number;
+        };
+      }>(`/api/sites/${siteIdForApi}/statistics`);
+
+      console.log(`[SITES API] Retrieved statistics for site: ${siteId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[SITES API] Failed to get statistics for site ${siteId}:`, error);
       throw error;
     }
   },
@@ -464,6 +586,12 @@ export const {
   getSiteCheckInStats,
   updateSiteGeofence,
   exportSites,
+  // Location management
+  getLocations,
+  addLocation,
+  updateLocation,
+  deleteLocation,
+  getSiteStatistics,
 } = sitesApi;
 
 /**

@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, Search, Users, Edit, Trash2, Phone, IdCard, MapPin, AlertCircle, Crown, User, Ruler, Calendar, Award } from 'lucide-react';
 import { CertificateRangeFilter } from '@/components/CertificateRangeFilter';
 import { HeightRangeFilter } from '@/components/HeightRangeFilter';
+import GuardBulkImport from '@/components/GuardBulkImport';
 import {
   GuardRole,
   GuardRoleDisplayNames,
@@ -600,16 +601,21 @@ export default function GuardManagement() {
           </p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-          setIsAddDialogOpen(open);
-          if (!open) resetAddForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
-              <Plus className="h-4 w-4" />
-              <span>添加保安</span>
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center space-x-2">
+          <GuardBulkImport
+            sites={sites.map(s => ({ id: s.id, name: s.name }))}
+            onImportComplete={fetchData}
+          />
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) resetAddForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>添加保安</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-2">
@@ -907,6 +913,7 @@ export default function GuardManagement() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search and Filter Section */}

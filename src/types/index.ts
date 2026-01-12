@@ -188,26 +188,64 @@ export interface Guard {
 }
 
 /**
+ * Checkin location interface for multi-location support
+ */
+export interface CheckinLocation {
+  /** Unique identifier for the location */
+  id: number;
+
+  /** Name of the location (e.g., "东门", "西门") */
+  name: string;
+
+  /** Geographic latitude coordinate */
+  latitude: number;
+
+  /** Geographic longitude coordinate */
+  longitude: number;
+
+  /** Allowed check-in radius in meters */
+  allowedRadius: number;
+}
+
+/**
  * Site interface represents a work location/site where guards are deployed
  */
 export interface Site {
   /** Unique identifier for the site */
   id: string;
-  
+
   /** Name/title of the site location */
   name: string;
-  
-  /** Geographic latitude coordinate */
+
+  /** Geographic latitude coordinate (legacy, for backward compatibility) */
   latitude: number;
-  
-  /** Geographic longitude coordinate */
+
+  /** Geographic longitude coordinate (legacy, for backward compatibility) */
   longitude: number;
-  
-  /** Allowed check-in radius in meters */
+
+  /** Allowed check-in radius in meters (legacy, for backward compatibility) */
   allowedRadiusMeters: number;
-  
+
   /** Array of guard IDs assigned to this site */
   assignedGuardIds: string[];
+
+  /** Array of checkin locations (new multi-location support) */
+  locations?: CheckinLocation[];
+
+  /** Number of checkin locations */
+  locationCount?: number;
+
+  /** Number of guards assigned to this site */
+  guardCount?: number;
+
+  /** Number of guards currently on duty */
+  onDutyNow?: number;
+
+  /** Whether the site is active */
+  isActive?: boolean;
+
+  /** Creation timestamp */
+  createdAt?: string;
 }
 
 /**
@@ -755,6 +793,16 @@ export interface SiteFormData {
   latitude: number;
   longitude: number;
   assignedGuardIds: string[];
+}
+
+/**
+ * Form data for creating/updating checkin locations
+ */
+export interface CheckinLocationFormData {
+  name: string;
+  latitude: number;
+  longitude: number;
+  allowedRadius?: number;  // defaults to 100 meters
 }
 
 /**

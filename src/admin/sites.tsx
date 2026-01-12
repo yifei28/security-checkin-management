@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { request } from '../util/request';
 import { BASE_URL } from '../util/config';
+import { sitesApi } from '@/api/sitesApi';
 import { usePagination } from '@/hooks/usePagination';
 import type { PaginationResponse } from '@/hooks/usePagination';
 import { TablePagination } from '@/components/TablePagination';
@@ -15,8 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Search, MapPin, Edit, Trash2, Users, AlertCircle, Map as MapIcon, ChevronRight, ChevronDown } from 'lucide-react';
-import type { SiteDetailData } from '@/types';
+import type { Site, SiteDetailData } from '@/types';
 import SiteExpandedDetail from '@/components/SiteExpandedDetail';
+import LocationManagementDialog from '@/components/LocationManagementDialog';
 // import { cn } from "@/lib/utils";
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -184,6 +186,9 @@ export default function SiteManagement() {
   const [siteDetails, setSiteDetails] = useState<Map<string, SiteDetailData>>(new Map())
   const [loadingSites, setLoadingSites] = useState<Set<string>>(new Set())
 
+  // Location management dialog state
+  const [locationDialogSite, setLocationDialogSite] = useState<Site | null>(null)
+
   // 分页状态
   const pagination = usePagination({
     initialPageSize: 20,
@@ -323,16 +328,30 @@ export default function SiteManagement() {
       const newSiteResponse = await res.json();
       // 处理可能的响应格式差异
       const newSiteData = newSiteResponse.data || newSiteResponse;
-      
+
       // 确保ID是字符串类型，避免startsWith错误
       const newSite: SiteResponse = {
         ...newSiteData,
         id: String(newSiteData.id),
         assignedGuardIds: newSiteData.assignedGuardIds?.map((id: string | number) => String(id)) || []
       };
-      
+
       console.log('[SITES] Add response:', newSite);
-      
+
+      // 自动创建默认签到地点
+      try {
+        await sitesApi.addLocation(newSite.id, {
+          name: '默认签到点',
+          latitude: parseFloat(addForm.latitude),
+          longitude: parseFloat(addForm.longitude),
+          allowedRadius: parseFloat(addForm.allowedRadiusMeters)
+        });
+        console.log('[SITES] Default checkin location created for site:', newSite.id);
+      } catch (locationError) {
+        console.warn('[SITES] Failed to create default location, user can add manually:', locationError);
+        // 不抛出错误，单位已创建成功，用户可以手动添加签到地点
+      }
+
       // 添加新站点到列表
       setSites(prev => {
         const updatedList = [...prev, newSite];
@@ -1008,7 +1027,7 @@ export default function SiteManagement() {
                   <TableHead className="w-10"></TableHead>
                   <TableHead>站点信息</TableHead>
                   <TableHead>位置坐标</TableHead>
-                  <TableHead className="w-32">操作</TableHead>
+                  <TableHead className="w-36">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1065,6 +1084,23 @@ export default function SiteManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLocationDialogSite({
+                                id: site.id,
+                                name: site.name,
+                                latitude: site.latitude,
+                                longitude: site.longitude,
+                                allowedRadiusMeters: site.allowedRadiusMeters,
+                                assignedGuardIds: site.assignedGuardIds || []
+                              })}
+                              className="h-8 px-2"
+                              title="管理签到地点"
+                              data-testid={`locations-site-${site.id}`}
+                            >
+                              <MapPin className="h-3 w-3" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -1125,6 +1161,28 @@ export default function SiteManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Location Management Dialog */}
+      {locationDialogSite && (
+        <LocationManagementDialog
+          site={{
+            id: locationDialogSite.id,
+            name: locationDialogSite.name,
+            latitude: locationDialogSite.latitude,
+            longitude: locationDialogSite.longitude,
+            allowedRadiusMeters: locationDialogSite.allowedRadiusMeters,
+            assignedGuardIds: locationDialogSite.assignedGuardIds || []
+          }}
+          open={!!locationDialogSite}
+          onOpenChange={(open) => {
+            if (!open) setLocationDialogSite(null);
+          }}
+          onLocationsUpdated={() => {
+            // Refresh site data after locations are updated
+            fetchData();
+          }}
+        />
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
